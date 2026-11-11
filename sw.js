@@ -1,5 +1,5 @@
 /* same-folder offline cache only */
-var CACHE_NAME = "tango-cache-v2";
+var CACHE_NAME = "tango-cache-v3";
 var SCOPE_URL = new URL("./", self.location.href);
 var ASSETS = [
   "./index.html",
@@ -36,15 +36,14 @@ self.addEventListener("fetch", function (event) {
   if (url.pathname.indexOf(new URL(".", SCOPE_URL).pathname) !== 0) return;
 
   event.respondWith(
-    caches.match(req).then(function (cached) {
-      if (cached) return cached;
-      return fetch(req).then(function (res) {
-        if (res && res.ok) {
-          var copy = res.clone();
-          caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copy); });
-        }
-        return res;
-      }).catch(function () { return cached; });
+    fetch(req, { cache: "no-store" }).then(function (res) {
+      if (res && res.ok) {
+        var copy = res.clone();
+        caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copy); });
+      }
+      return res;
+    }).catch(function () {
+      return caches.match(req).then(function (c) { return c || caches.match(new URL("./index.html", SCOPE_URL).toString()); });
     })
   );
 });

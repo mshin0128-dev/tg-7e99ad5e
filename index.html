@@ -1215,7 +1215,9 @@ nav.tabbar {
   renderProgress();
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(function () {});
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (r) { r.update(); }).catch(function () {});
+    var swReloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () { if (swReloaded) return; swReloaded = true; location.reload(); });
   }
 })();
 </script>
