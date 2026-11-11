@@ -44,6 +44,7 @@
   --shadow: 0 8px 24px rgba(31,26,46,0.08);
   --danger: #D1456B;
   --good: #2E9B6B;
+  --close: #A3660A;
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
@@ -65,6 +66,7 @@ html[data-theme="dark"] {
   --shadow: 0 8px 24px rgba(0,0,0,0.4);
   --danger: #E78098;
   --good: #67C79A;
+  --close: #E7B169;
 }
 * { box-sizing: border-box; min-width: 0; }
 html { color-scheme: light; }
@@ -277,6 +279,37 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .wrong-list .ww { font-weight: 700; }
 .wrong-list .wm { color: var(--sub); font-size: 14px; }
 
+.resume-note { font-size: 13px; color: var(--accent); margin: 0 0 12px; font-weight: 600; }
+.input-q { margin-bottom: 12px; }
+.input-q-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; min-width: 0; }
+.input-q-no { font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
+.input-q-word { font-size: 20px; font-weight: 700; margin-bottom: 10px; overflow-wrap: anywhere; }
+.input-answer {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+}
+.ai-note { font-size: 12px; color: var(--sub); margin: 0 0 10px; }
+.input-result-item { margin-bottom: 12px; }
+.ir-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; min-width: 0; }
+.ir-no { font-size: 12px; color: var(--sub); flex: none; }
+.ir-word { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.ir-line { font-size: 14px; margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.ir-lbl { color: var(--sub); flex: none; }
+.ir-val { overflow-wrap: anywhere; min-width: 0; }
+.verdict { display: inline-block; font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 10px; margin: 6px 0; }
+.verdict.v-correct { color: var(--good); background: var(--learned-bg); }
+.verdict.v-wrong { color: var(--danger); background: var(--learned-bg); }
+.verdict.v-close { color: var(--close); background: var(--learned-bg); }
+.btn-mark-correct, .btn-mark-wrong { min-height: 40px; font-size: 13px; padding: 0 12px; }
+
 .bar-row { margin-bottom: 14px; min-width: 0; }
 .bar-row .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; gap: 8px; }
 .bar-row .bar-label .nm { color: var(--text); font-weight: 600; }
@@ -394,8 +427,24 @@ nav.tabbar {
     <h2 class="view-title">テスト</h2>
     <div id="testSetup">
       <div class="field">
-        <label class="field-label">範囲</label>
+        <label class="field-label">形式</label>
+        <div class="seg" id="testFormatSeg">
+          <button type="button" class="seg-btn" data-format="input">入力</button>
+          <button type="button" class="seg-btn" data-format="choice">4択</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">範囲（複数選択可）</label>
         <div class="chip-row" id="testRangeChips"></div>
+      </div>
+      <div class="field">
+        <div class="settings-row" style="padding:0;border-bottom:none;">
+          <div>
+            <div class="st-label" style="font-size:14px;">未チェックの単語だけ</div>
+            <div class="st-desc">覚えていない語だけ出題します</div>
+          </div>
+          <button type="button" class="btn" id="testUnlearnedToggle" aria-pressed="false">オフ</button>
+        </div>
       </div>
       <div class="field">
         <label class="field-label">出題数</label>
@@ -423,6 +472,25 @@ nav.tabbar {
       <div class="btn-row">
         <button class="btn primary" id="retryWrongBtn" style="display:none;">間違いだけ再テスト</button>
         <button class="btn" id="backToSetupBtn">もう一度設定する</button>
+      </div>
+    </div>
+    <div id="inputTest" style="display:none;">
+      <p class="resume-note" id="inputResumeNote" style="display:none;">前回の続きから再開しました</p>
+      <div id="inputTestList"></div>
+      <div class="btn-row" style="padding-bottom:4px;">
+        <button class="btn primary block" id="inputGradeBtn">採点</button>
+      </div>
+    </div>
+    <div id="inputResult" style="display:none;">
+      <div class="result-stat-row">
+        <div class="result-stat"><div class="num" id="inputResultAccuracy">0%</div><div class="lbl">正答率</div></div>
+        <div class="result-stat"><div class="num" id="inputResultCorrect">0/0</div><div class="lbl">正解数</div></div>
+      </div>
+      <p class="ai-note" id="inputAiNote" style="display:none;">AI判定は使えませんでした</p>
+      <div id="inputResultList"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="retryWrongInputBtn" style="display:none;">間違いだけ再テスト</button>
+        <button class="btn" id="backToSetupInputBtn">もう一度設定する</button>
       </div>
     </div>
   </section>
@@ -480,7 +548,19 @@ nav.tabbar {
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12b</p>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;">
+        <div class="st-label" style="margin-bottom:6px;">Gemini APIキー（任意）</div>
+        <div class="st-desc" style="margin-bottom:10px;">入力テストで不正解になった問題だけ、AIに意味の妥当性を確認させます。キーがなくてもすべての機能は動作します。</div>
+        <input type="password" id="geminiKeyInput" autocomplete="off" placeholder="APIキーを入力" style="width:100%;min-height:44px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:0 14px;margin-bottom:10px;">
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn primary" id="geminiKeySaveBtn">保存</button>
+          <button class="btn" id="geminiKeyDeleteBtn" style="display:none;color:var(--danger);">削除</button>
+        </div>
+        <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
+      </div>
+    </div>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12c</p>
   </section>
 </div>
 
@@ -625,6 +705,85 @@ nav.tabbar {
     });
   }
 
+  // ---------- Grading (window.tangoGrade) ----------
+  var BRACKET_RE = /\([^)]*\)|（[^）]*）|\[[^\]]*\]|【[^】]*】|「[^」]*」/g;
+  var SYMBOL_RE = /[\s。．.、，,;；:：・\/／ー'"\[\]「」（）()【】-]/g;
+  var TRAILING_SUFFIXES = ["すること", "する", "的", "の", "な", "に"];
+  var MEANING_SPLIT_RE = /[、,;；／\/]/;
+
+  function normalizeAnswer(s) {
+    if (s == null) return "";
+    s = String(s);
+    s = s.replace(BRACKET_RE, "");
+    s = s.normalize("NFKC");
+    s = s.replace(/[ァ-ヶ]/g, function (ch) {
+      return String.fromCharCode(ch.charCodeAt(0) - 0x60);
+    });
+    s = s.toLowerCase();
+    s = s.replace(SYMBOL_RE, "");
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (var i = 0; i < TRAILING_SUFFIXES.length; i++) {
+        var suf = TRAILING_SUFFIXES[i];
+        if (s.length > suf.length && s.slice(s.length - suf.length) === suf) {
+          s = s.slice(0, s.length - suf.length);
+          changed = true;
+          break;
+        }
+      }
+    }
+    return s;
+  }
+
+  function bigramsOf(s) {
+    var arr = [];
+    for (var i = 0; i < s.length - 1; i++) arr.push(s.slice(i, i + 2));
+    return arr;
+  }
+
+  function diceCoefficient(a, b) {
+    var ba = bigramsOf(a), bb = bigramsOf(b);
+    if (!ba.length || !bb.length) return 0;
+    var counts = {};
+    ba.forEach(function (g) { counts[g] = (counts[g] || 0) + 1; });
+    var matches = 0;
+    bb.forEach(function (g) {
+      if (counts[g] > 0) { matches++; counts[g]--; }
+    });
+    return (2 * matches) / (ba.length + bb.length);
+  }
+
+  function splitMeaningSynonyms(meaning) {
+    return String(meaning == null ? "" : meaning)
+      .split(MEANING_SPLIT_RE)
+      .map(function (p) { return normalizeAnswer(p); })
+      .filter(function (p) { return p !== ""; });
+  }
+
+  window.tangoGrade = function (answer, meaning) {
+    var normAnswer = normalizeAnswer(answer);
+    if (!normAnswer) return { verdict: "wrong" };
+    var synonyms = splitMeaningSynonyms(meaning);
+    if (synonyms.indexOf(normAnswer) !== -1) return { verdict: "correct" };
+    var wholeNorm = normalizeAnswer(meaning);
+    if (normAnswer === wholeNorm) return { verdict: "correct" };
+    for (var i = 0; i < synonyms.length; i++) {
+      var syn = synonyms[i];
+      if (normAnswer.length >= 2 && syn.length >= 2 &&
+          (syn.indexOf(normAnswer) !== -1 || normAnswer.indexOf(syn) !== -1)) {
+        return { verdict: "correct" };
+      }
+    }
+    var maxDice = 0;
+    synonyms.forEach(function (syn) {
+      var d = diceCoefficient(normAnswer, syn);
+      if (d > maxDice) maxDice = d;
+    });
+    if (maxDice >= 0.6) return { verdict: "close" };
+    return { verdict: "wrong" };
+  };
+
   // ---------- Theme ----------
   function effectiveTheme(pref) {
     if (pref === "light" || pref === "dark") return pref;
@@ -659,7 +818,16 @@ nav.tabbar {
     tab: "list",
     list: { range: "001-100", query: "", expanded: {} },
     flip: { range: "001-100", shuffle: false, unlearnedOnly: false, deck: [], index: 0, flipped: false },
-    test: { phase: "setup", range: "001-100", count: 10, questions: [], index: 0, answers: [], retryPool: null }
+    test: {
+      phase: "setup",
+      format: "input",
+      selectedRanges: ["001-100"],
+      allRanges: false,
+      unlearnedOnly: false,
+      count: 20,
+      questions: [], index: 0, answers: [], retryPool: null,
+      inputQuestions: [], inputResults: [], inputRetryPool: null
+    }
   };
 
   function switchTab(name) {
@@ -672,8 +840,16 @@ nav.tabbar {
     });
     if (name === "list") renderList();
     if (name === "flip") renderFlipChips();
-    if (name === "test") renderTestSetup();
+    if (name === "test") {
+      if (state.test.phase === "inputTest") {
+        updateTestPhaseVisibility();
+        renderInputTest(false);
+      } else if (!tryResumeDraft()) {
+        renderTestSetup();
+      }
+    }
     if (name === "progress") renderProgress();
+    if (name === "settings") refreshGeminiKeyUI();
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function (btn) {
@@ -897,37 +1073,90 @@ nav.tabbar {
   document.getElementById("flipStartBtn").addEventListener("click", flipBuildDeck);
 
   // ---------- Test view ----------
-  var TEST_COUNT_OPTIONS = [1, 10, 20, 30, 50, "UNLEARNED"];
+  var TEST_COUNT_OPTIONS = [10, 20, 30];
+
+  function updateTestPhaseVisibility() {
+    var phase = state.test.phase;
+    document.getElementById("testSetup").style.display = phase === "setup" ? "" : "none";
+    document.getElementById("testQuestion").style.display = phase === "choiceQuestion" ? "" : "none";
+    document.getElementById("testResult").style.display = phase === "choiceResult" ? "" : "none";
+    document.getElementById("inputTest").style.display = phase === "inputTest" ? "" : "none";
+    document.getElementById("inputResult").style.display = phase === "inputResult" ? "" : "none";
+  }
+
+  function showSetupMessage(msg) {
+    var el = document.getElementById("testSetupMsg");
+    el.style.display = "";
+    el.textContent = msg;
+  }
+
+  function toggleTestRange(r) {
+    if (r === "ALL") {
+      state.test.allRanges = true;
+      state.test.selectedRanges = [];
+    } else if (state.test.allRanges) {
+      state.test.allRanges = false;
+      state.test.selectedRanges = [r];
+    } else {
+      var idx = state.test.selectedRanges.indexOf(r);
+      if (idx !== -1) {
+        if (state.test.selectedRanges.length > 1) state.test.selectedRanges.splice(idx, 1);
+      } else {
+        state.test.selectedRanges.push(r);
+      }
+    }
+    renderTestSetup();
+  }
+
+  function testPool() {
+    if (state.test.allRanges) return ALL_WORDS.slice();
+    var seen = {}, result = [];
+    state.test.selectedRanges.forEach(function (r) {
+      wordsInRange(r).forEach(function (w) {
+        if (!seen[w.no]) { seen[w.no] = true; result.push(w); }
+      });
+    });
+    return result;
+  }
 
   function renderTestSetup() {
-    document.getElementById("testSetup").style.display = "";
-    document.getElementById("testQuestion").style.display = "none";
-    document.getElementById("testResult").style.display = "none";
+    updateTestPhaseVisibility();
     document.getElementById("testSetupMsg").style.display = "none";
+
+    var fseg = document.getElementById("testFormatSeg");
+    Array.prototype.forEach.call(fseg.querySelectorAll(".seg-btn"), function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-format") === state.test.format);
+    });
 
     var rwrap = document.getElementById("testRangeChips");
     rwrap.innerHTML = "";
     RANGES.concat(["ALL"]).forEach(function (r) {
+      var selected = r === "ALL" ? state.test.allRanges : (!state.test.allRanges && state.test.selectedRanges.indexOf(r) !== -1);
       var chip = document.createElement("button");
-      chip.className = "chip" + (state.test.range === r ? " active" : "");
+      chip.type = "button";
+      chip.className = "chip" + (selected ? " active" : "");
+      chip.setAttribute("data-range", r);
       if (r === "ALL") {
-        chip.innerHTML = "<b>全範囲</b><span class=\"rest\">500語</span>";
+        chip.innerHTML = "<b>全範囲</b><span class=\"rest\">" + ALL_WORDS.length + "語</span>";
       } else {
         chip.innerHTML = '<b>' + r + '</b><span class="rest">残り' + rangeRemaining(r) + '語</span>';
       }
-      chip.addEventListener("click", function () {
-        state.test.range = r;
-        renderTestSetup();
-      });
+      chip.addEventListener("click", function () { toggleTestRange(r); });
       rwrap.appendChild(chip);
     });
+
+    var toggleBtn = document.getElementById("testUnlearnedToggle");
+    toggleBtn.textContent = state.test.unlearnedOnly ? "オン" : "オフ";
+    toggleBtn.setAttribute("aria-pressed", String(state.test.unlearnedOnly));
+    toggleBtn.classList.toggle("primary", state.test.unlearnedOnly);
 
     var cwrap = document.getElementById("testCountChips");
     cwrap.innerHTML = "";
     TEST_COUNT_OPTIONS.forEach(function (c) {
       var chip = document.createElement("button");
+      chip.type = "button";
       chip.className = "chip" + (state.test.count === c ? " active" : "");
-      chip.innerHTML = c === "UNLEARNED" ? "<b>未習得すべて</b>" : ("<b>" + c + "問</b>");
+      chip.innerHTML = "<b>" + c + "問</b>";
       chip.addEventListener("click", function () {
         state.test.count = c;
         renderTestSetup();
@@ -935,6 +1164,18 @@ nav.tabbar {
       cwrap.appendChild(chip);
     });
   }
+
+  document.getElementById("testFormatSeg").addEventListener("click", function (e) {
+    var btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    state.test.format = btn.getAttribute("data-format");
+    renderTestSetup();
+  });
+
+  document.getElementById("testUnlearnedToggle").addEventListener("click", function () {
+    state.test.unlearnedOnly = !state.test.unlearnedOnly;
+    renderTestSetup();
+  });
 
   function buildQuestions(pool) {
     var qs = shuffle(pool).map(function (w) {
@@ -963,31 +1204,33 @@ nav.tabbar {
     return qs;
   }
 
-  function startTest(pool) {
+  function startChoiceTest(pool) {
     if (!pool.length) {
-      document.getElementById("testSetupMsg").style.display = "";
-      document.getElementById("testSetupMsg").textContent = "出題できる単語がありません";
+      showSetupMessage("出題できる単語がありません");
       return;
     }
     state.test.questions = buildQuestions(pool);
     state.test.index = 0;
     state.test.answers = [];
-    state.test.phase = "question";
-    document.getElementById("testSetup").style.display = "none";
-    document.getElementById("testQuestion").style.display = "";
-    document.getElementById("testResult").style.display = "none";
+    state.test.phase = "choiceQuestion";
+    updateTestPhaseVisibility();
     renderTestQuestion();
   }
 
   document.getElementById("testStartBtn").addEventListener("click", function () {
-    var pool = wordsInRange(state.test.range);
-    var n = state.test.count;
-    if (n === "UNLEARNED") {
-      pool = pool.filter(function (w) { return !isLearned(w.no); });
-    } else {
-      pool = shuffle(pool).slice(0, Math.min(n, pool.length));
+    var pool = testPool();
+    if (state.test.unlearnedOnly) pool = pool.filter(function (w) { return !isLearned(w.no); });
+    if (!pool.length) {
+      showSetupMessage("出題できる単語がありません");
+      return;
     }
-    startTest(pool);
+    var n = Math.min(state.test.count, pool.length);
+    var chosen = shuffle(pool).slice(0, n);
+    if (state.test.format === "choice") {
+      startChoiceTest(chosen);
+    } else {
+      startInputTest(chosen);
+    }
   });
 
   function renderTestQuestion() {
@@ -1038,9 +1281,8 @@ nav.tabbar {
   });
 
   function showTestResult() {
-    state.test.phase = "result";
-    document.getElementById("testQuestion").style.display = "none";
-    document.getElementById("testResult").style.display = "";
+    state.test.phase = "choiceResult";
+    updateTestPhaseVisibility();
     var answers = state.test.answers;
     var correctCount = answers.filter(function (a) { return a.correct; }).length;
     var total = answers.length;
@@ -1074,11 +1316,309 @@ nav.tabbar {
   }
 
   document.getElementById("retryWrongBtn").addEventListener("click", function () {
-    if (state.test.retryPool && state.test.retryPool.length) startTest(state.test.retryPool);
+    if (state.test.retryPool && state.test.retryPool.length) startChoiceTest(state.test.retryPool);
   });
   document.getElementById("backToSetupBtn").addEventListener("click", function () {
     state.test.phase = "setup";
     renderTestSetup();
+  });
+
+  // ---------- Input test ----------
+  var DRAFT_KEY = "tango_input_draft_v1";
+  var VERDICT_LABELS = { correct: "正解", close: "近い（正解扱い）", wrong: "不正解" };
+  var VERDICT_CLASSES = { correct: "v-correct", close: "v-close", wrong: "v-wrong" };
+
+  function startInputTest(chosen) {
+    state.test.inputQuestions = chosen.map(function (w) {
+      return { no: w.no, word: w.word, pos: w.pos, meaning: w.meaning, answer: "" };
+    });
+    state.test.phase = "inputTest";
+    updateTestPhaseVisibility();
+    renderInputTest(false);
+    saveInputDraft();
+  }
+
+  function renderInputTest(resumed) {
+    document.getElementById("inputResumeNote").style.display = resumed ? "" : "none";
+    var wrap = document.getElementById("inputTestList");
+    wrap.innerHTML = "";
+    state.test.inputQuestions.forEach(function (q, idx) {
+      var div = document.createElement("div");
+      div.className = "input-q card";
+      div.setAttribute("data-no", q.no);
+      div.innerHTML =
+        '<div class="input-q-head"><span class="input-q-no">' + (idx + 1) + '. No.' + q.no + '</span>' +
+        '<span class="w-pos">' + escapeHtml(q.pos || "") + '</span></div>' +
+        '<div class="input-q-word">' + escapeHtml(q.word) + '</div>';
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "input-answer";
+      input.setAttribute("data-no", q.no);
+      input.setAttribute("aria-label", "回答: " + q.word);
+      input.autocomplete = "off";
+      input.lang = "ja";
+      input.value = q.answer || "";
+      input.addEventListener("input", function (e) {
+        q.answer = e.target.value;
+        saveInputDraft();
+      });
+      div.appendChild(input);
+      wrap.appendChild(div);
+    });
+  }
+
+  function saveInputDraft() {
+    if (state.test.phase !== "inputTest") return;
+    var payload = {
+      settings: {
+        format: state.test.format,
+        ranges: state.test.allRanges ? ["ALL"] : state.test.selectedRanges.slice(),
+        unlearnedOnly: state.test.unlearnedOnly,
+        count: state.test.count
+      },
+      questions: state.test.inputQuestions.map(function (q) {
+        return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer };
+      })
+    };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(payload)); } catch (e) {}
+  }
+
+  function clearInputDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+
+  function loadInputDraft() {
+    var raw;
+    try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    try {
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.questions) || !parsed.questions.length) return null;
+      return parsed;
+    } catch (e) { return null; }
+  }
+
+  function tryResumeDraft() {
+    var draft = loadInputDraft();
+    if (!draft) return false;
+    state.test.format = "input";
+    if (draft.settings) {
+      if (draft.settings.ranges && draft.settings.ranges.indexOf("ALL") !== -1) {
+        state.test.allRanges = true;
+        state.test.selectedRanges = [];
+      } else if (draft.settings.ranges && draft.settings.ranges.length) {
+        state.test.allRanges = false;
+        state.test.selectedRanges = draft.settings.ranges.slice();
+      }
+      if (typeof draft.settings.unlearnedOnly === "boolean") state.test.unlearnedOnly = draft.settings.unlearnedOnly;
+      if (draft.settings.count) state.test.count = draft.settings.count;
+    }
+    state.test.inputQuestions = draft.questions.map(function (q) {
+      return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer || "" };
+    });
+    state.test.phase = "inputTest";
+    updateTestPhaseVisibility();
+    renderInputTest(true);
+    return true;
+  }
+
+  function computeInputStats(results) {
+    var total = results.length;
+    var good = results.filter(function (r) { return r.verdict === "correct" || r.verdict === "close"; }).length;
+    return { total: total, good: good, acc: total ? Math.round((good / total) * 100) : 0 };
+  }
+
+  function showAiNote(show) {
+    document.getElementById("inputAiNote").style.display = show ? "" : "none";
+  }
+
+  function rewriteLastHistoryMark(no, mark) {
+    var h = getHistory(no);
+    if (h && h.length) {
+      progress.history[no] = h.slice(0, -1) + mark;
+    } else {
+      progress.history[no] = mark;
+    }
+    saveProgress();
+  }
+
+  function buildInputResultItem(r) {
+    var div = document.createElement("div");
+    div.className = "input-result-item card";
+    div.setAttribute("data-no", r.no);
+    div.innerHTML =
+      '<div class="ir-head"><span class="ir-no">No.' + r.no + '</span><span class="ir-word">' + escapeHtml(r.word) + '</span></div>' +
+      '<div class="ir-line"><span class="ir-lbl">あなたの回答</span><span class="ir-val">' + escapeHtml(r.answer || "（未回答）") + '</span></div>' +
+      '<div class="ir-line"><span class="ir-lbl">正しい意味</span><span class="ir-val">' + escapeHtml(r.meaning) + '</span></div>' +
+      '<div class="verdict ' + VERDICT_CLASSES[r.verdict] + '">' + VERDICT_LABELS[r.verdict] + '</div>' +
+      '<div class="btn-row">' +
+      '<button type="button" class="btn btn-mark-correct" data-no="' + r.no + '">正解にする</button>' +
+      '<button type="button" class="btn btn-mark-wrong" data-no="' + r.no + '">不正解にする</button>' +
+      '</div>';
+    div.querySelector(".btn-mark-correct").addEventListener("click", function () { manualSetVerdict(r.no, "correct"); });
+    div.querySelector(".btn-mark-wrong").addEventListener("click", function () { manualSetVerdict(r.no, "wrong"); });
+    return div;
+  }
+
+  function renderInputResult() {
+    var results = state.test.inputResults;
+    var stats = computeInputStats(results);
+    document.getElementById("inputResultAccuracy").textContent = stats.acc + "%";
+    document.getElementById("inputResultCorrect").textContent = stats.good + " / " + stats.total;
+
+    var listWrap = document.getElementById("inputResultList");
+    listWrap.innerHTML = "";
+    results.forEach(function (r) {
+      listWrap.appendChild(buildInputResultItem(r));
+    });
+
+    var wrongs = results.filter(function (r) { return r.verdict === "wrong"; });
+    var retryBtn = document.getElementById("retryWrongInputBtn");
+    if (wrongs.length) {
+      retryBtn.style.display = "";
+      state.test.inputRetryPool = wrongs.map(function (r) { return wordByNo[r.no]; }).filter(Boolean);
+    } else {
+      retryBtn.style.display = "none";
+      state.test.inputRetryPool = null;
+    }
+  }
+
+  function manualSetVerdict(no, newVerdict) {
+    var results = state.test.inputResults;
+    var r = null;
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].no === no) { r = results[i]; break; }
+    }
+    if (!r || r.verdict === newVerdict) return;
+    r.verdict = newVerdict;
+    r.manual = true;
+    rewriteLastHistoryMark(no, newVerdict === "wrong" ? "×" : "○");
+    renderInputResult();
+  }
+
+  function gradeInputTest() {
+    showAiNote(false);
+    var qs = state.test.inputQuestions;
+    var results = qs.map(function (q) {
+      var g = window.tangoGrade(q.answer, q.meaning);
+      appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
+      return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer, verdict: g.verdict };
+    });
+    state.test.inputResults = results;
+    state.test.phase = "inputResult";
+    clearInputDraft();
+    updateTestPhaseVisibility();
+    renderInputResult();
+    maybeRunGeminiCheck(results);
+  }
+
+  document.getElementById("inputGradeBtn").addEventListener("click", gradeInputTest);
+
+  document.getElementById("retryWrongInputBtn").addEventListener("click", function () {
+    if (state.test.inputRetryPool && state.test.inputRetryPool.length) startInputTest(state.test.inputRetryPool);
+  });
+  document.getElementById("backToSetupInputBtn").addEventListener("click", function () {
+    state.test.phase = "setup";
+    renderTestSetup();
+  });
+
+  // ---------- Gemini (optional AI recheck) ----------
+  var GEMINI_KEY = "tango_gemini_key";
+
+  function geminiKey() {
+    try { return localStorage.getItem(GEMINI_KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function buildGeminiPrompt(items) {
+    var lines = items.map(function (it, idx) {
+      return (idx + 1) + ". word: " + it.word + " / official meaning: " + it.meaning + " / user answer: " + it.answer;
+    });
+    return "以下は英単語テストの採点結果です。各項目について、ユーザーの回答(user answer)が、その単語の公式な意味(official meaning)として妥当かどうかを判定してください。" +
+      "厳密な完全一致でなくても、意味的に正しい、または許容できる言い換え・類義語であれば妥当とみなしてください。" +
+      "次のJSON配列の形式で、項目数と順序を保ったまま回答してください（説明文は不要です）: " +
+      "[{\"index\": 1, \"acceptable\": true}, ...]\n\n" + lines.join("\n");
+  }
+
+  function callGemini(model, apiKey, promptText) {
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(apiKey);
+    var body = {
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    };
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) {
+        var err = new Error("gemini http " + res.status);
+        err.status = res.status;
+        throw err;
+      }
+      return res.json();
+    }).then(function (data) {
+      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content &&
+        data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+      return JSON.parse(text);
+    });
+  }
+
+  function maybeRunGeminiCheck(results) {
+    var apiKey = geminiKey();
+    if (!apiKey) return;
+    var wrongs = results.filter(function (r) { return r.verdict === "wrong"; });
+    if (!wrongs.length) return;
+    var items = wrongs.map(function (r) { return { no: r.no, word: r.word, answer: r.answer, meaning: r.meaning }; });
+    var promptText = buildGeminiPrompt(items);
+
+    callGemini("gemini-3.5-flash", apiKey, promptText).catch(function (e) {
+      if (e && (e.status === 503 || e.status === 429)) {
+        return callGemini("gemini-flash-latest", apiKey, promptText);
+      }
+      throw e;
+    }).then(function (parsed) {
+      if (!Array.isArray(parsed)) { showAiNote(true); return; }
+      parsed.forEach(function (entry) {
+        if (!entry || typeof entry.index !== "number" || !entry.acceptable) return;
+        var item = items[entry.index - 1];
+        if (!item) return;
+        var r = null;
+        for (var i = 0; i < state.test.inputResults.length; i++) {
+          if (state.test.inputResults[i].no === item.no) { r = state.test.inputResults[i]; break; }
+        }
+        if (r && r.verdict === "wrong") {
+          r.verdict = "correct";
+          r.aiChecked = true;
+          rewriteLastHistoryMark(r.no, "○");
+        }
+      });
+      if (state.test.phase === "inputResult") renderInputResult();
+    }).catch(function () {
+      showAiNote(true);
+    });
+  }
+
+  function refreshGeminiKeyUI() {
+    var input = document.getElementById("geminiKeyInput");
+    var hasKey = !!geminiKey();
+    input.placeholder = hasKey ? "保存済み" : "APIキーを入力";
+    input.value = "";
+    document.getElementById("geminiKeyDeleteBtn").style.display = hasKey ? "" : "none";
+    document.getElementById("geminiKeyStatus").textContent = hasKey ? "保存済みのキーがあります" : "未設定です（なくても動作します）";
+  }
+
+  document.getElementById("geminiKeySaveBtn").addEventListener("click", function () {
+    var input = document.getElementById("geminiKeyInput");
+    var v = input.value.trim();
+    if (!v) return;
+    try { localStorage.setItem(GEMINI_KEY, v); } catch (e) {}
+    input.value = "";
+    refreshGeminiKeyUI();
+  });
+
+  document.getElementById("geminiKeyDeleteBtn").addEventListener("click", function () {
+    try { localStorage.removeItem(GEMINI_KEY); } catch (e) {}
+    refreshGeminiKeyUI();
   });
 
   // ---------- Progress view ----------
