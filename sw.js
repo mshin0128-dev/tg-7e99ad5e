@@ -1,5 +1,5 @@
 /* same-folder offline cache only */
-var CACHE_NAME = "tango-cache-v1";
+var CACHE_NAME = "tango-cache-v2";
 var SCOPE_URL = new URL("./", self.location.href);
 var ASSETS = [
   "./index.html",

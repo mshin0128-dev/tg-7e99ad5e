@@ -178,9 +178,12 @@ li.word-row.is-learned { background: var(--learned-bg); }
 .w-no { font-size: 12px; color: var(--sub); flex: none; }
 .w-word { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
 .w-pos { font-size: 12px; color: var(--sub); border: 1px solid var(--border); border-radius: 8px; padding: 1px 6px; flex: none; }
-.w-meaning { margin-top: 2px; font-size: 14px; color: var(--sub); overflow-wrap: anywhere; }
+.w-meaning, .w-meaning-placeholder { margin-top: 2px; font-size: 14px; min-height: 20px; overflow-wrap: anywhere; }
+.w-meaning { color: var(--sub); }
+.w-meaning-placeholder { color: var(--sub); opacity: 0.6; }
 li.word-row.is-learned .w-word,
 li.word-row.is-learned .w-meaning,
+li.word-row.is-learned .w-meaning-placeholder,
 li.word-row.is-learned .w-no,
 li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .row-detail { padding: 0 14px 14px 54px; display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border); margin-top: 0; min-width: 0; }
@@ -477,7 +480,7 @@ nav.tabbar {
         <button class="btn" id="resetBtn" style="color:var(--danger);">リセット</button>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12a</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12b</p>
   </section>
 </div>
 
@@ -742,7 +745,9 @@ nav.tabbar {
         '<div class="row-top"><span class="w-no">No.' + w.no + '</span>' +
         '<span class="w-word">' + escapeHtml(w.word) + '</span>' +
         '<span class="w-pos">' + escapeHtml(w.pos || "") + '</span></div>' +
-        '<div class="w-meaning">' + escapeHtml(w.meaning || "") + '</div>';
+        (expanded
+          ? '<div class="w-meaning">' + escapeHtml(w.meaning || "") + '</div>'
+          : '<div class="w-meaning-placeholder">タップで意味を表示</div>');
       textWrap.addEventListener("click", function () {
         state.list.expanded[w.no] = !state.list.expanded[w.no];
         renderList();
