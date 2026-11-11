@@ -334,10 +334,18 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 
 ul.session-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 li.session-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.session-main-wrap { cursor: pointer; min-width: 0; }
 .session-date { font-size: 12px; color: var(--sub); margin-bottom: 2px; }
 .session-main { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .session-label { font-weight: 600; overflow-wrap: anywhere; }
 .session-score { color: var(--sub); font-size: 13px; flex: none; }
+.session-detail { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sess-item-row { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.sess-item-no { font-size: 12px; color: var(--sub); margin-right: 6px; }
+.sess-item-mark { font-weight: 700; margin-right: 6px; }
+.sess-item-word { font-weight: 700; overflow-wrap: anywhere; }
+.sess-item-meaning { font-size: 13px; color: var(--sub); margin-top: 2px; overflow-wrap: anywhere; }
+.sess-item-answer { font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
 
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .settings-row:last-child { border-bottom: none; }
@@ -485,17 +493,19 @@ nav.tabbar.is-hidden { display: none; }
         <div class="chip-row" id="testRangeChips"></div>
       </div>
       <div class="field">
-        <div class="settings-row" style="padding:0;border-bottom:none;">
-          <div>
-            <div class="st-label" style="font-size:14px;">未チェックの単語だけ</div>
-            <div class="st-desc">覚えていない語だけ出題します</div>
-          </div>
-          <button type="button" class="btn" id="testUnlearnedToggle" aria-pressed="false">オフ</button>
+        <label class="field-label">対象</label>
+        <div class="seg" id="testTargetSeg">
+          <button type="button" class="seg-btn" data-target="unchecked">未チェックだけ</button>
+          <button type="button" class="seg-btn" data-target="all">全部（チェック済みも含む）</button>
         </div>
       </div>
       <div class="field">
         <label class="field-label">出題数</label>
         <div class="chip-row" id="testCountChips"></div>
+      </div>
+      <div class="card" style="margin-bottom:14px;">
+        <p class="ai-note" id="testCycleStatus" style="margin:0 0 10px;"></p>
+        <button type="button" class="btn block" id="cycleResetBtn" style="color:var(--danger);">周回をリセット</button>
       </div>
       <button class="btn primary block" id="testStartBtn">テストを始める</button>
       <p class="empty-msg" id="testSetupMsg" style="display:none;"></p>
@@ -517,10 +527,10 @@ nav.tabbar.is-hidden { display: none; }
         <div class="result-stat"><div class="num" id="resultAccuracy">0%</div><div class="lbl">正答率</div></div>
         <div class="result-stat"><div class="num" id="resultCorrect">0/0</div><div class="lbl">正解数</div></div>
       </div>
-      <h2 class="view-title" style="font-size:15px;">間違えた単語</h2>
-      <ul class="wrong-list" id="resultWrongList"></ul>
+      <h2 class="view-title" style="font-size:15px;">出題した単語</h2>
+      <div id="resultList"></div>
       <div class="btn-row">
-        <button class="btn primary" id="retryWrongBtn" style="display:none;">間違いだけ再テスト</button>
+        <button class="btn primary" id="continueChoiceBtn">続けてテストする</button>
         <button class="btn" id="backToSetupBtn">もう一度設定する</button>
       </div>
     </div>
@@ -542,7 +552,7 @@ nav.tabbar.is-hidden { display: none; }
       <p class="ai-note" id="inputAiNote" style="display:none;">AI判定は使えませんでした</p>
       <div id="inputResultList"></div>
       <div class="btn-row">
-        <button class="btn primary" id="retryWrongInputBtn" style="display:none;">間違いだけ再テスト</button>
+        <button class="btn primary" id="continueInputBtn">続けてテストする</button>
         <button class="btn" id="backToSetupInputBtn">もう一度設定する</button>
       </div>
     </div>
@@ -615,7 +625,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12e</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12f</p>
   </section>
 </div>
 
@@ -677,7 +687,13 @@ nav.tabbar.is-hidden { display: none; }
   var wordByNo = {};
   ALL_WORDS.forEach(function (w) { wordByNo[w.no] = w; });
 
-  var progress = { learned: {}, history: {}, sessions: [] };
+  var progress = { learned: {}, history: {}, sessions: [], cycles: {} };
+
+  function sanitizeSessions(list) {
+    return (Array.isArray(list) ? list : []).filter(function (s) {
+      return !(s && s.id && String(s.id).indexOf("excel-") === 0);
+    });
+  }
 
   function mergeHistoryStrings(excelH, savedH) {
     excelH = excelH || "";
@@ -710,7 +726,7 @@ nav.tabbar.is-hidden { display: none; }
     return result;
   }
 
-  function mergeWithExcel(savedLearned, savedHistory, savedSessions) {
+  function mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles) {
     savedLearned = savedLearned || {};
     savedHistory = savedHistory || {};
     var learned = {}, history = {};
@@ -727,11 +743,16 @@ nav.tabbar.is-hidden { display: none; }
         (Object.prototype.hasOwnProperty.call(savedHistory, String(w.no)) ? savedHistory[String(w.no)] : "");
       history[w.no] = mergeHistoryStrings(w.history || "", savedH);
     });
-    return { learned: learned, history: history, sessions: mergeSessionsWithExcel(savedSessions) };
+    return {
+      learned: learned,
+      history: history,
+      sessions: mergeSessionsWithExcel(sanitizeSessions(savedSessions)),
+      cycles: (savedCycles && typeof savedCycles === "object") ? savedCycles : {}
+    };
   }
 
   function buildInitialProgress() {
-    return mergeWithExcel({}, {}, []);
+    return mergeWithExcel({}, {}, [], {});
   }
 
   function saveProgress() {
@@ -751,7 +772,8 @@ nav.tabbar.is-hidden { display: none; }
       var savedLearned = (parsed && typeof parsed.learned === "object" && parsed.learned) ? parsed.learned : {};
       var savedHistory = (parsed && typeof parsed.history === "object" && parsed.history) ? parsed.history : {};
       var savedSessions = (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [];
-      progress = mergeWithExcel(savedLearned, savedHistory, savedSessions);
+      var savedCycles = (parsed && typeof parsed.cycles === "object" && parsed.cycles) ? parsed.cycles : {};
+      progress = mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles);
       saveProgress();
     } catch (e) {
       progress = buildInitialProgress();
@@ -840,6 +862,119 @@ nav.tabbar.is-hidden { display: none; }
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  // ---------- Cycle (周回) ----------
+  window.tangoCycle = {
+    take: function (remaining, n) {
+      var arr = Array.isArray(remaining) ? remaining : [];
+      var count = Math.max(0, n | 0);
+      return { taken: arr.slice(0, count), leftover: arr.slice(count) };
+    }
+  };
+
+  function normalizeRangeKeyForCycle() {
+    if (state.test.allRanges) return "ALL";
+    var sorted = state.test.selectedRanges.slice().sort();
+    if (sorted.length === RANGES.length && RANGES.every(function (r) { return sorted.indexOf(r) !== -1; })) return "ALL";
+    return sorted.join(",");
+  }
+
+  function currentCycleKey() {
+    return normalizeRangeKeyForCycle() + "|" + (state.test.unlearnedOnly ? "unchecked" : "all");
+  }
+
+  function wordsForRangeKey(rangeKey) {
+    if (rangeKey === "ALL") return ALL_WORDS.slice();
+    var parts = rangeKey.split(",");
+    var seen = {}, out = [];
+    parts.forEach(function (r) {
+      wordsInRange(r).forEach(function (w) {
+        if (!seen[w.no]) { seen[w.no] = true; out.push(w); }
+      });
+    });
+    return out;
+  }
+
+  function cycleModeFromKey(key) {
+    return key.slice(key.lastIndexOf("|") + 1);
+  }
+
+  function poolNosForKey(key) {
+    var idx = key.lastIndexOf("|");
+    var rangeKey = key.slice(0, idx);
+    var mode = key.slice(idx + 1);
+    var words = wordsForRangeKey(rangeKey);
+    if (mode === "unchecked") words = words.filter(function (w) { return !isLearned(w.no); });
+    return words.map(function (w) { return w.no; });
+  }
+
+  function getCycle(key) {
+    if (!progress.cycles || typeof progress.cycles !== "object") progress.cycles = {};
+    if (!progress.cycles[key]) progress.cycles[key] = { lap: 1, remaining: [], wrongLap: [], reserved: [], everStarted: false };
+    var c = progress.cycles[key];
+    if (!Array.isArray(c.remaining)) c.remaining = [];
+    if (!Array.isArray(c.wrongLap)) c.wrongLap = [];
+    if (!Array.isArray(c.reserved)) c.reserved = [];
+    if (typeof c.lap !== "number" || c.lap < 1) c.lap = 1;
+    if (typeof c.everStarted !== "boolean") c.everStarted = !!(c.remaining.length || c.wrongLap.length || c.reserved.length || (c.lap && c.lap > 1));
+    return c;
+  }
+
+  function pruneForUnchecked(c, mode, freshPoolNos) {
+    if (mode !== "unchecked") return;
+    var poolSet = {};
+    freshPoolNos.forEach(function (no) { poolSet[no] = true; });
+    c.remaining = c.remaining.filter(function (no) { return poolSet[no]; });
+    c.wrongLap = c.wrongLap.filter(function (no) { return poolSet[no]; });
+  }
+
+  function advanceLapIfPossible(c, mode, freshPoolNos) {
+    pruneForUnchecked(c, mode, freshPoolNos);
+    var guard = 0;
+    while (c.remaining.length === 0 && c.reserved.length === 0 && c.wrongLap.length > 0 && guard < 20) {
+      guard++;
+      c.lap = (c.lap || 1) + 1;
+      c.remaining = shuffle(c.wrongLap.slice());
+      c.wrongLap = [];
+      pruneForUnchecked(c, mode, freshPoolNos);
+    }
+  }
+
+  function startNewLapIfEmpty(c, mode, freshPoolNos) {
+    advanceLapIfPossible(c, mode, freshPoolNos);
+    if (c.remaining.length === 0 && c.reserved.length === 0 && c.wrongLap.length === 0 && freshPoolNos.length > 0) {
+      c.lap = 1;
+      c.remaining = shuffle(freshPoolNos.slice());
+      c.everStarted = true;
+    }
+  }
+
+  function reconcileCycleAfterTest(key, confirmedNos, wrongNos, unansweredNos) {
+    if (!key) return;
+    var c = getCycle(key);
+    var removeSet = {};
+    confirmedNos.concat(unansweredNos).forEach(function (no) { removeSet[no] = true; });
+    c.reserved = c.reserved.filter(function (no) { return !removeSet[no]; });
+    unansweredNos.forEach(function (no) { if (c.remaining.indexOf(no) === -1) c.remaining.push(no); });
+    wrongNos.forEach(function (no) { if (c.wrongLap.indexOf(no) === -1) c.wrongLap.push(no); });
+    var mode = cycleModeFromKey(key);
+    var freshPool = poolNosForKey(key);
+    advanceLapIfPossible(c, mode, freshPool);
+    saveProgress();
+  }
+
+  function adjustCycleForVerdictChange(key, lap, no, wasWrong, isWrong) {
+    if (!key || wasWrong === isWrong) return;
+    var c = progress.cycles && progress.cycles[key];
+    if (!c || c.lap !== lap) return;
+    if (wasWrong && !isWrong) {
+      var idx = c.wrongLap.indexOf(no);
+      if (idx !== -1) c.wrongLap.splice(idx, 1);
+    } else if (!wasWrong && isWrong) {
+      if (c.wrongLap.indexOf(no) === -1) c.wrongLap.push(no);
+    }
+    saveProgress();
   }
 
   // ---------- Grading (window.tangoGrade) ----------
@@ -960,11 +1095,13 @@ nav.tabbar.is-hidden { display: none; }
       format: "input",
       selectedRanges: ["001-100"],
       allRanges: false,
-      unlearnedOnly: false,
+      unlearnedOnly: true,
       count: 20,
-      questions: [], index: 0, answers: [], retryPool: null,
-      inputQuestions: [], inputResults: [], inputRetryPool: null, currentInputSession: null
-    }
+      activeCycleKey: null, activeCycleLap: null,
+      questions: [], index: 0, answers: [],
+      inputQuestions: [], inputResults: [], currentInputSession: null
+    },
+    progress: { expandedSessions: {} }
   };
 
   function switchTab(name) {
@@ -1261,15 +1398,26 @@ nav.tabbar.is-hidden { display: none; }
     renderTestSetup();
   }
 
-  function testPool() {
-    if (state.test.allRanges) return ALL_WORDS.slice();
-    var seen = {}, result = [];
-    state.test.selectedRanges.forEach(function (r) {
-      wordsInRange(r).forEach(function (w) {
-        if (!seen[w.no]) { seen[w.no] = true; result.push(w); }
-      });
-    });
-    return result;
+  function renderCycleStatus() {
+    var key = currentCycleKey();
+    var mode = cycleModeFromKey(key);
+    var freshPool = poolNosForKey(key);
+    var c = getCycle(key);
+    advanceLapIfPossible(c, mode, freshPool);
+    saveProgress();
+    var el = document.getElementById("testCycleStatus");
+    var remainingCount = c.remaining.length;
+    if (remainingCount === 0 && c.wrongLap.length === 0 && c.reserved.length === 0) {
+      if (freshPool.length === 0) {
+        el.textContent = "対象の単語がありません。";
+      } else if (!c.everStarted) {
+        el.textContent = "今は1周目、残り" + freshPool.length + "語";
+      } else {
+        el.textContent = "周回完了（この周で×はありません）。新しい1周目を始められます。";
+      }
+    } else {
+      el.textContent = "今は" + c.lap + "周目、残り" + remainingCount + "語";
+    }
   }
 
   function renderTestSetup() {
@@ -1298,10 +1446,11 @@ nav.tabbar.is-hidden { display: none; }
       rwrap.appendChild(chip);
     });
 
-    var toggleBtn = document.getElementById("testUnlearnedToggle");
-    toggleBtn.textContent = state.test.unlearnedOnly ? "オン" : "オフ";
-    toggleBtn.setAttribute("aria-pressed", String(state.test.unlearnedOnly));
-    toggleBtn.classList.toggle("primary", state.test.unlearnedOnly);
+    var tseg = document.getElementById("testTargetSeg");
+    Array.prototype.forEach.call(tseg.querySelectorAll(".seg-btn"), function (btn) {
+      var isUnchecked = btn.getAttribute("data-target") === "unchecked";
+      btn.classList.toggle("active", isUnchecked === state.test.unlearnedOnly);
+    });
 
     var cwrap = document.getElementById("testCountChips");
     cwrap.innerHTML = "";
@@ -1316,6 +1465,8 @@ nav.tabbar.is-hidden { display: none; }
       });
       cwrap.appendChild(chip);
     });
+
+    renderCycleStatus();
   }
 
   document.getElementById("testFormatSeg").addEventListener("click", function (e) {
@@ -1325,8 +1476,18 @@ nav.tabbar.is-hidden { display: none; }
     renderTestSetup();
   });
 
-  document.getElementById("testUnlearnedToggle").addEventListener("click", function () {
-    state.test.unlearnedOnly = !state.test.unlearnedOnly;
+  document.getElementById("testTargetSeg").addEventListener("click", function (e) {
+    var btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    state.test.unlearnedOnly = btn.getAttribute("data-target") === "unchecked";
+    renderTestSetup();
+  });
+
+  document.getElementById("cycleResetBtn").addEventListener("click", function () {
+    var key = currentCycleKey();
+    if (!window.confirm("この範囲×対象の周回をリセットします。よろしいですか？")) return;
+    if (progress.cycles) delete progress.cycles[key];
+    saveProgress();
     renderTestSetup();
   });
 
@@ -1370,21 +1531,40 @@ nav.tabbar.is-hidden { display: none; }
     renderTestQuestion();
   }
 
-  document.getElementById("testStartBtn").addEventListener("click", function () {
-    var pool = testPool();
-    if (state.test.unlearnedOnly) pool = pool.filter(function (w) { return !isLearned(w.no); });
-    if (!pool.length) {
+  function handleStartClick() {
+    var key = currentCycleKey();
+    var mode = cycleModeFromKey(key);
+    var freshPool = poolNosForKey(key);
+    if (!freshPool.length) {
+      state.test.phase = "setup";
+      renderTestSetup();
       showSetupMessage("出題できる単語がありません");
       return;
     }
-    var n = Math.min(state.test.count, pool.length);
-    var chosen = shuffle(pool).slice(0, n);
+    var c = getCycle(key);
+    startNewLapIfEmpty(c, mode, freshPool);
+    var n = Math.min(state.test.count, c.remaining.length);
+    if (n <= 0) {
+      state.test.phase = "setup";
+      renderTestSetup();
+      showSetupMessage("この組み合わせは周回完了です。対象の単語が増えると次の周を始められます。");
+      return;
+    }
+    var takeResult = window.tangoCycle.take(c.remaining, n);
+    c.remaining = takeResult.leftover;
+    c.reserved = takeResult.taken.slice();
+    saveProgress();
+    state.test.activeCycleKey = key;
+    state.test.activeCycleLap = c.lap;
+    var chosen = takeResult.taken.map(function (no) { return wordByNo[no]; }).filter(Boolean);
     if (state.test.format === "choice") {
       startChoiceTest(chosen);
     } else {
       startInputTest(chosen);
     }
-  });
+  }
+
+  document.getElementById("testStartBtn").addEventListener("click", handleStartClick);
 
   function renderTestQuestion() {
     var q = state.test.questions[state.test.index];
@@ -1410,7 +1590,7 @@ nav.tabbar.is-hidden { display: none; }
     var chosen = q.options[idx];
     var correct = chosen === q.correctMeaning;
     appendHistory(q.no, correct ? "○" : "×");
-    state.test.answers.push({ no: q.no, word: q.word, meaning: q.correctMeaning, correct: correct });
+    state.test.answers.push({ no: q.no, word: q.word, meaning: q.correctMeaning, correct: correct, chosen: chosen });
 
     var buttons = document.getElementById("testAnswerList").children;
     Array.prototype.forEach.call(buttons, function (btn, i) {
@@ -1443,6 +1623,14 @@ nav.tabbar.is-hidden { display: none; }
     document.getElementById("resultAccuracy").textContent = acc + "%";
     document.getElementById("resultCorrect").textContent = correctCount + " / " + total;
 
+    answers.forEach(function (a) { if (a.correct) setLearned(a.no, true); });
+
+    var items = answers.map(function (a) {
+      var w = wordByNo[a.no];
+      return { no: a.no, word: a.word, meaning: a.meaning, pos: w ? w.pos : "", mark: a.correct ? "○" : "×", answer: a.chosen, verdict: a.correct ? "correct" : "wrong" };
+    });
+
+    var key = state.test.activeCycleKey;
     addSession({
       id: makeSessionId(),
       source: "app",
@@ -1450,37 +1638,33 @@ nav.tabbar.is-hidden { display: none; }
       at: new Date().toISOString(),
       ranges: sessionRangesFromNos(answers.map(function (a) { return a.no; })),
       total: total,
-      correct: correctCount
+      correct: correctCount,
+      cycleKey: key || null,
+      lap: state.test.activeCycleLap || null,
+      items: items
     });
 
-    var wrongs = answers.filter(function (a) { return !a.correct; });
-    var wrongList = document.getElementById("resultWrongList");
-    wrongList.innerHTML = "";
-    if (!wrongs.length) {
-      var none = document.createElement("li");
-      none.textContent = "なし";
-      none.style.border = "none";
-      none.style.color = "var(--sub)";
-      wrongList.appendChild(none);
-    }
-    wrongs.forEach(function (a) {
-      var li = document.createElement("li");
-      li.innerHTML = '<div class="ww">' + escapeHtml(a.word) + '</div><div class="wm">' + escapeHtml(a.meaning) + '</div>';
-      wrongList.appendChild(li);
-    });
-    var retryBtn = document.getElementById("retryWrongBtn");
-    if (wrongs.length) {
-      retryBtn.style.display = "";
-      state.test.retryPool = wrongs.map(function (a) { return wordByNo[a.no]; }).filter(Boolean);
-    } else {
-      retryBtn.style.display = "none";
-      state.test.retryPool = null;
-    }
+    reconcileCycleAfterTest(
+      key,
+      answers.map(function (a) { return a.no; }),
+      answers.filter(function (a) { return !a.correct; }).map(function (a) { return a.no; }),
+      []
+    );
+
+    renderResultList(items);
   }
 
-  document.getElementById("retryWrongBtn").addEventListener("click", function () {
-    if (state.test.retryPool && state.test.retryPool.length) startChoiceTest(state.test.retryPool);
-  });
+  function renderResultList(items) {
+    var wrap = document.getElementById("resultList");
+    wrap.innerHTML = "";
+    items.forEach(function (it) {
+      wrap.appendChild(buildResultItemCard({
+        no: it.no, word: it.word, meaning: it.meaning, verdict: it.verdict, answer: it.answer, showManualButtons: false
+      }));
+    });
+  }
+
+  document.getElementById("continueChoiceBtn").addEventListener("click", handleStartClick);
   document.getElementById("backToSetupBtn").addEventListener("click", function () {
     state.test.phase = "setup";
     renderTestSetup();
@@ -1489,18 +1673,36 @@ nav.tabbar.is-hidden { display: none; }
   document.getElementById("abortChoiceBtn").addEventListener("click", function () {
     if (!window.confirm("テストを中断しますか？")) return;
     var answers = state.test.answers;
+    var allNos = state.test.questions.map(function (q) { return q.no; });
+    var answeredNos = answers.map(function (a) { return a.no; });
+    var unansweredNos = allNos.filter(function (no) { return answeredNos.indexOf(no) === -1; });
     if (answers.length) {
       var correctCount = answers.filter(function (a) { return a.correct; }).length;
+      answers.forEach(function (a) { if (a.correct) setLearned(a.no, true); });
+      var items = answers.map(function (a) {
+        var w = wordByNo[a.no];
+        return { no: a.no, word: a.word, meaning: a.meaning, pos: w ? w.pos : "", mark: a.correct ? "○" : "×", answer: a.chosen, verdict: a.correct ? "correct" : "wrong" };
+      });
       addSession({
         id: makeSessionId(),
         source: "app",
         type: "choice",
         at: new Date().toISOString(),
-        ranges: sessionRangesFromNos(answers.map(function (a) { return a.no; })),
+        ranges: sessionRangesFromNos(answeredNos),
         total: answers.length,
-        correct: correctCount
+        correct: correctCount,
+        cycleKey: state.test.activeCycleKey || null,
+        lap: state.test.activeCycleLap || null,
+        items: items
       });
     }
+    reconcileCycleAfterTest(
+      state.test.activeCycleKey,
+      answeredNos,
+      answers.filter(function (a) { return !a.correct; }).map(function (a) { return a.no; }),
+      unansweredNos
+    );
+    state.test.activeCycleKey = null;
     state.test.phase = "setup";
     renderTestSetup();
   });
@@ -1559,6 +1761,8 @@ nav.tabbar.is-hidden { display: none; }
         unlearnedOnly: state.test.unlearnedOnly,
         count: state.test.count
       },
+      activeCycleKey: state.test.activeCycleKey,
+      activeCycleLap: state.test.activeCycleLap,
       questions: state.test.inputQuestions.map(function (q) {
         return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer };
       })
@@ -1596,6 +1800,8 @@ nav.tabbar.is-hidden { display: none; }
       if (typeof draft.settings.unlearnedOnly === "boolean") state.test.unlearnedOnly = draft.settings.unlearnedOnly;
       if (draft.settings.count) state.test.count = draft.settings.count;
     }
+    state.test.activeCycleKey = draft.activeCycleKey || null;
+    state.test.activeCycleLap = draft.activeCycleLap || null;
     state.test.inputQuestions = draft.questions.map(function (q) {
       return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer || "" };
     });
@@ -1625,21 +1831,33 @@ nav.tabbar.is-hidden { display: none; }
     saveProgress();
   }
 
-  function buildInputResultItem(r) {
+  function buildResultItemCard(item) {
     var div = document.createElement("div");
     div.className = "input-result-item card";
-    div.setAttribute("data-no", r.no);
+    div.setAttribute("data-no", item.no);
+    var verdictClass = VERDICT_CLASSES[item.verdict] || "v-wrong";
+    var verdictLabel = VERDICT_LABELS[item.verdict] || "不正解";
+    var answerText = (item.answer && String(item.answer).trim() !== "") ? item.answer : "（未回答）";
     div.innerHTML =
-      '<div class="ir-head"><span class="ir-no">No.' + r.no + '</span><span class="ir-word">' + escapeHtml(r.word) + '</span></div>' +
-      '<div class="ir-line"><span class="ir-lbl">あなたの回答</span><span class="ir-val">' + escapeHtml(r.answer || "（未回答）") + '</span></div>' +
-      '<div class="ir-line"><span class="ir-lbl">正しい意味</span><span class="ir-val">' + escapeHtml(r.meaning) + '</span></div>' +
-      '<div class="verdict ' + VERDICT_CLASSES[r.verdict] + '">' + VERDICT_LABELS[r.verdict] + '</div>' +
-      '<div class="btn-row">' +
-      '<button type="button" class="btn btn-mark-correct" data-no="' + r.no + '">正解にする</button>' +
-      '<button type="button" class="btn btn-mark-wrong" data-no="' + r.no + '">不正解にする</button>' +
-      '</div>';
-    div.querySelector(".btn-mark-correct").addEventListener("click", function () { manualSetVerdict(r.no, "correct"); });
-    div.querySelector(".btn-mark-wrong").addEventListener("click", function () { manualSetVerdict(r.no, "wrong"); });
+      '<div class="ir-head"><span class="ir-no">No.' + item.no + '</span><span class="ir-word">' + escapeHtml(item.word) + '</span></div>' +
+      '<div class="ir-line"><span class="ir-lbl">回答</span><span class="ir-val">' + escapeHtml(answerText) + '</span></div>' +
+      '<div class="ir-line"><span class="ir-lbl">正しい意味</span><span class="ir-val">' + escapeHtml(item.meaning) + '</span></div>' +
+      '<div class="verdict ' + verdictClass + '">' + verdictLabel + '</div>' +
+      (item.showManualButtons
+        ? '<div class="btn-row">' +
+          '<button type="button" class="btn btn-mark-correct" data-no="' + item.no + '">正解にする</button>' +
+          '<button type="button" class="btn btn-mark-wrong" data-no="' + item.no + '">不正解にする</button>' +
+          '</div>'
+        : "") +
+      '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;">' +
+      '<input type="checkbox" class="result-learned-chk" data-no="' + item.no + '"' + (isLearned(item.no) ? " checked" : "") + ' style="width:22px;height:22px;">覚えた</label>';
+    if (item.showManualButtons) {
+      div.querySelector(".btn-mark-correct").addEventListener("click", function () { manualSetVerdict(item.no, "correct"); });
+      div.querySelector(".btn-mark-wrong").addEventListener("click", function () { manualSetVerdict(item.no, "wrong"); });
+    }
+    div.querySelector(".result-learned-chk").addEventListener("change", function (e) {
+      setLearned(item.no, e.target.checked);
+    });
     return div;
   }
 
@@ -1652,18 +1870,10 @@ nav.tabbar.is-hidden { display: none; }
     var listWrap = document.getElementById("inputResultList");
     listWrap.innerHTML = "";
     results.forEach(function (r) {
-      listWrap.appendChild(buildInputResultItem(r));
+      listWrap.appendChild(buildResultItemCard({
+        no: r.no, word: r.word, meaning: r.meaning, verdict: r.verdict, answer: r.answer, showManualButtons: true
+      }));
     });
-
-    var wrongs = results.filter(function (r) { return r.verdict === "wrong"; });
-    var retryBtn = document.getElementById("retryWrongInputBtn");
-    if (wrongs.length) {
-      retryBtn.style.display = "";
-      state.test.inputRetryPool = wrongs.map(function (r) { return wordByNo[r.no]; }).filter(Boolean);
-    } else {
-      retryBtn.style.display = "none";
-      state.test.inputRetryPool = null;
-    }
   }
 
   function manualSetVerdict(no, newVerdict) {
@@ -1673,9 +1883,18 @@ nav.tabbar.is-hidden { display: none; }
       if (results[i].no === no) { r = results[i]; break; }
     }
     if (!r || r.verdict === newVerdict) return;
+    var wasWrong = r.verdict === "wrong";
+    var isWrong = newVerdict === "wrong";
     r.verdict = newVerdict;
     r.manual = true;
     rewriteLastHistoryMark(no, newVerdict === "wrong" ? "×" : "○");
+    if (!isWrong) setLearned(no, true);
+    var session = state.test.currentInputSession;
+    if (session) {
+      var it = (session.items || []).filter(function (x) { return x.no === no; })[0];
+      if (it) { it.verdict = newVerdict; it.mark = isWrong ? "×" : "○"; }
+      adjustCycleForVerdictChange(session.cycleKey, session.lap, no, wasWrong, isWrong);
+    }
     syncCurrentInputSessionScore();
     renderInputResult();
   }
@@ -1691,15 +1910,26 @@ nav.tabbar.is-hidden { display: none; }
   function gradeInputTest() {
     showAiNote(false);
     var qs = state.test.inputQuestions;
+    var confirmedNos = [], unansweredNos = [], wrongNos = [];
     var results = qs.map(function (q) {
+      var answered = (q.answer || "").trim() !== "";
       var g = window.tangoGrade(q.answer, q.meaning);
       appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
+      if (g.verdict !== "wrong") setLearned(q.no, true);
+      if (answered) {
+        confirmedNos.push(q.no);
+        if (g.verdict === "wrong") wrongNos.push(q.no);
+      } else {
+        unansweredNos.push(q.no);
+      }
       return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer, verdict: g.verdict };
     });
     state.test.inputResults = results;
     state.test.phase = "inputResult";
     clearInputDraft();
     var stats = computeInputStats(results);
+    var key = state.test.activeCycleKey;
+    var lap = state.test.activeCycleLap;
     state.test.currentInputSession = addSession({
       id: makeSessionId(),
       source: "app",
@@ -1707,8 +1937,15 @@ nav.tabbar.is-hidden { display: none; }
       at: new Date().toISOString(),
       ranges: sessionRangesFromNos(results.map(function (r) { return r.no; })),
       total: stats.total,
-      correct: stats.good
+      correct: stats.good,
+      cycleKey: key || null,
+      lap: lap || null,
+      items: results.map(function (r) {
+        var w = wordByNo[r.no];
+        return { no: r.no, word: r.word, meaning: r.meaning, pos: r.pos || (w ? w.pos : ""), mark: r.verdict === "wrong" ? "×" : "○", answer: r.answer || "", verdict: r.verdict };
+      })
     });
+    reconcileCycleAfterTest(key, confirmedNos, wrongNos, unansweredNos);
     updateTestPhaseVisibility();
     renderInputResult();
     maybeRunGeminiCheck(results);
@@ -1716,9 +1953,7 @@ nav.tabbar.is-hidden { display: none; }
 
   document.getElementById("inputGradeBtn").addEventListener("click", gradeInputTest);
 
-  document.getElementById("retryWrongInputBtn").addEventListener("click", function () {
-    if (state.test.inputRetryPool && state.test.inputRetryPool.length) startInputTest(state.test.inputRetryPool);
-  });
+  document.getElementById("continueInputBtn").addEventListener("click", handleStartClick);
   document.getElementById("backToSetupInputBtn").addEventListener("click", function () {
     state.test.phase = "setup";
     renderTestSetup();
@@ -1727,12 +1962,16 @@ nav.tabbar.is-hidden { display: none; }
   document.getElementById("abortInputBtn").addEventListener("click", function () {
     if (!window.confirm("テストを中断しますか？")) return;
     var answered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() !== ""; });
+    var unanswered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() === ""; });
+    var wrongNos = [];
     if (answered.length) {
       var correctCount = 0;
-      answered.forEach(function (q) {
+      var items = answered.map(function (q) {
         var g = window.tangoGrade(q.answer, q.meaning);
         appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
-        if (g.verdict !== "wrong") correctCount++;
+        if (g.verdict !== "wrong") { correctCount++; setLearned(q.no, true); } else { wrongNos.push(q.no); }
+        var w = wordByNo[q.no];
+        return { no: q.no, word: q.word, meaning: q.meaning, pos: q.pos || (w ? w.pos : ""), mark: g.verdict === "wrong" ? "×" : "○", answer: q.answer, verdict: g.verdict };
       });
       addSession({
         id: makeSessionId(),
@@ -1741,9 +1980,19 @@ nav.tabbar.is-hidden { display: none; }
         at: new Date().toISOString(),
         ranges: sessionRangesFromNos(answered.map(function (q) { return q.no; })),
         total: answered.length,
-        correct: correctCount
+        correct: correctCount,
+        cycleKey: state.test.activeCycleKey || null,
+        lap: state.test.activeCycleLap || null,
+        items: items
       });
     }
+    reconcileCycleAfterTest(
+      state.test.activeCycleKey,
+      answered.map(function (q) { return q.no; }),
+      wrongNos,
+      unanswered.map(function (q) { return q.no; })
+    );
+    state.test.activeCycleKey = null;
     clearInputDraft();
     state.test.phase = "setup";
     renderTestSetup();
@@ -1817,6 +2066,13 @@ nav.tabbar.is-hidden { display: none; }
           r.verdict = "correct";
           r.aiChecked = true;
           rewriteLastHistoryMark(r.no, "○");
+          setLearned(r.no, true);
+          var session = state.test.currentInputSession;
+          if (session) {
+            var it = (session.items || []).filter(function (x) { return x.no === r.no; })[0];
+            if (it) { it.verdict = "correct"; it.mark = "○"; }
+            adjustCycleForVerdictChange(session.cycleKey, session.lap, r.no, true, false);
+          }
         }
       });
       syncCurrentInputSessionScore();
@@ -1913,12 +2169,12 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function sessionLabel(s) {
-    if (s.source === "excel") {
-      return (s.range || "") + (s.round ? (" " + s.round) : "");
+    var rangePart = s.range || ((s.ranges && s.ranges.length) ? s.ranges.join("・") : "");
+    if (s.source === "csv" || s.source === "excel") {
+      return [s.round || "", rangePart].filter(Boolean).join(" ・ ");
     }
-    var ranges = (s.ranges && s.ranges.length) ? s.ranges.join("・") : "";
     var typeLabel = s.type === "choice" ? "4択" : (s.type === "input" ? "入力" : (s.type || ""));
-    return (ranges ? ranges + " ・ " : "") + typeLabel;
+    return (rangePart ? rangePart + " ・ " : "") + typeLabel;
   }
 
   function sessionDateLabel(s) {
@@ -1933,6 +2189,31 @@ nav.tabbar.is-hidden { display: none; }
     return "日付不明";
   }
 
+  function sessionKeyFor(s, idx) {
+    return s.id || ("idx-" + idx);
+  }
+
+  function buildSessionDetailHtml(s) {
+    if (!Array.isArray(s.items) || !s.items.length) {
+      return '<p class="empty-msg" style="padding:10px 0;">この回の単語ごとの記録はありません</p>';
+    }
+    var rows = s.items.map(function (it) {
+      var w = wordByNo[it.no];
+      var meaning = it.meaning || (w ? w.meaning : "");
+      var wordText = it.word || (w ? w.word : "");
+      var markClass = it.mark === "○" ? "hist-good" : "hist-bad";
+      var ans = (it.answer && String(it.answer).trim() !== "") ? it.answer : "（未回答）";
+      return '<div class="sess-item-row">' +
+        '<div><span class="sess-item-no">No.' + it.no + '</span>' +
+        '<span class="sess-item-mark ' + markClass + '">' + escapeHtml(it.mark || "") + '</span>' +
+        '<span class="sess-item-word">' + escapeHtml(wordText) + '</span></div>' +
+        '<div class="sess-item-meaning">' + escapeHtml(meaning) + '</div>' +
+        '<div class="sess-item-answer">回答: ' + escapeHtml(ans) + '</div>' +
+        '</div>';
+    }).join("");
+    return '<div class="session-items">' + rows + '</div>';
+  }
+
   function renderSessionList() {
     var wrap = document.getElementById("progSessionList");
     var sessions = (progress.sessions || []).slice().sort(function (a, b) {
@@ -1945,16 +2226,30 @@ nav.tabbar.is-hidden { display: none; }
     }
     var ul = document.createElement("ul");
     ul.className = "session-list";
-    sessions.forEach(function (s) {
+    sessions.forEach(function (s, idx) {
+      var sid = sessionKeyFor(s, idx);
       var li = document.createElement("li");
       li.className = "session-item";
       var scoreText = (s.correct === null || s.correct === undefined)
         ? "正解数の記録なし"
         : (s.correct + " / " + s.total);
-      li.innerHTML =
+      var main = document.createElement("div");
+      main.className = "session-main-wrap";
+      main.innerHTML =
         '<div class="session-date">' + escapeHtml(sessionDateLabel(s)) + '</div>' +
         '<div class="session-main"><span class="session-label">' + escapeHtml(sessionLabel(s)) + '</span>' +
         '<span class="session-score">' + escapeHtml(scoreText) + '</span></div>';
+      main.addEventListener("click", function () {
+        state.progress.expandedSessions[sid] = !state.progress.expandedSessions[sid];
+        renderSessionList();
+      });
+      li.appendChild(main);
+      if (state.progress.expandedSessions[sid]) {
+        var detail = document.createElement("div");
+        detail.className = "session-detail";
+        detail.innerHTML = buildSessionDetailHtml(s);
+        li.appendChild(detail);
+      }
       ul.appendChild(li);
     });
     wrap.appendChild(ul);
@@ -1999,7 +2294,8 @@ nav.tabbar.is-hidden { display: none; }
         Object.keys(parsed.learned).forEach(function (k) { nextLearned[k] = !!parsed.learned[k]; });
         Object.keys(parsed.history).forEach(function (k) { nextHistory[k] = String(parsed.history[k] || ""); });
         var nextSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
-        progress = mergeWithExcel(nextLearned, nextHistory, nextSessions);
+        var nextCycles = (parsed.cycles && typeof parsed.cycles === "object") ? parsed.cycles : {};
+        progress = mergeWithExcel(nextLearned, nextHistory, nextSessions, nextCycles);
         saveProgress();
         msg.style.display = "";
         msg.className = "import-msg ok";
@@ -2041,7 +2337,10 @@ nav.tabbar.is-hidden { display: none; }
     var tabbarEl = document.getElementById("tabbar");
     function isFormFocused() {
       var el = document.activeElement;
-      return !!(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"));
+      if (!el) return false;
+      if (el.tagName === "TEXTAREA") return true;
+      if (el.tagName === "INPUT") return el.type !== "checkbox" && el.type !== "radio";
+      return false;
     }
     function keyboardLikelyOpen() {
       if (!window.visualViewport) return false;
