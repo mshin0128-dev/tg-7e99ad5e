@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>TOEIC単語帳</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -71,7 +71,7 @@ html[data-theme="dark"] {
 * { box-sizing: border-box; min-width: 0; }
 html { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
-html, body { margin: 0; padding: 0; background: var(--bg); }
+html, body { margin: 0; padding: 0; background: var(--bg); touch-action: manipulation; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", sans-serif;
   color: var(--text);
@@ -87,6 +87,7 @@ button, input, select {
   color: inherit;
 }
 button { cursor: pointer; }
+button, a, input, select, textarea, label { touch-action: manipulation; }
 #app {
   min-height: 100vh;
   padding-bottom: calc(96px + var(--safe-b));
@@ -325,6 +326,11 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .hist-bad { color: var(--danger); }
 .hist-stats { font-size: 12px; color: var(--sub); margin-top: 2px; }
 .hist-none { font-size: 12px; color: var(--sub); }
+.row-hist { margin-top: 4px; min-width: 0; }
+.row-hist .hist-wrap { margin-top: 0; }
+.row-hist .hist-str { font-size: 13px; letter-spacing: 0.08em; line-height: 1.3; }
+.row-hist .hist-stats { font-size: 11px; margin-top: 1px; }
+.row-hist .hist-none { font-size: 11px; }
 
 ul.session-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 li.session-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
@@ -379,6 +385,28 @@ nav.tabbar.is-hidden { display: none; }
 .tab-btn span { font-size: 10.5px; line-height: 1.1; }
 .tab-btn.active { background: var(--tab-pill-bg); color: var(--accent); }
 </style>
+<script>
+(function () {
+  try {
+    var lastTouchEnd = 0;
+    function isEditableTarget(el) {
+      if (!el) return false;
+      var tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    }
+    document.addEventListener("touchend", function (e) {
+      if (isEditableTarget(e.target)) return;
+      var now = Date.now();
+      if (now - lastTouchEnd <= 300) e.preventDefault();
+      lastTouchEnd = now;
+    }, { passive: false });
+    document.addEventListener("dblclick", function (e) {
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+    }, { passive: false });
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 <div id="app">
@@ -402,7 +430,7 @@ nav.tabbar.is-hidden { display: none; }
     <div class="btn-row" style="margin-top:0;margin-bottom:10px;">
       <button class="btn" id="flipShuffleBtn" aria-pressed="false">シャッフル: オフ</button>
       <button class="btn" id="flipUnlearnedBtn" aria-pressed="false">未習得だけ: オフ</button>
-      <button class="btn primary" id="flipStartBtn">開始</button>
+      <button class="btn primary" id="flipStartBtn">最初から</button>
     </div>
     <div class="flip-progress" id="flipProgress">0 / 0</div>
     <div class="flip-card-outer">
@@ -480,6 +508,9 @@ nav.tabbar.is-hidden { display: none; }
       <div class="btn-row">
         <button class="btn primary block" id="testNextBtn" style="display:none;">次へ</button>
       </div>
+      <div class="btn-row">
+        <button type="button" class="btn block" id="abortChoiceBtn" style="color:var(--danger);">中断</button>
+      </div>
     </div>
     <div id="testResult" style="display:none;">
       <div class="result-stat-row">
@@ -498,6 +529,9 @@ nav.tabbar.is-hidden { display: none; }
       <div id="inputTestList"></div>
       <div class="btn-row" style="padding-bottom:4px;">
         <button class="btn primary block" id="inputGradeBtn">採点</button>
+      </div>
+      <div class="btn-row" style="padding-bottom:4px;">
+        <button type="button" class="btn block" id="abortInputBtn" style="color:var(--danger);">中断</button>
       </div>
     </div>
     <div id="inputResult" style="display:none;">
@@ -581,7 +615,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12d</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12e</p>
   </section>
 </div>
 
@@ -942,7 +976,16 @@ nav.tabbar.is-hidden { display: none; }
       b.classList.toggle("active", b.getAttribute("data-tab") === name);
     });
     if (name === "list") renderList();
-    if (name === "flip") renderFlipChips();
+    if (name === "flip") {
+      var rangeChanged = state.flip.range !== state.list.range;
+      state.flip.range = state.list.range;
+      renderFlipChips();
+      if (rangeChanged || !state.flip.deck.length) {
+        flipBuildDeck();
+      } else {
+        renderFlipCard();
+      }
+    }
     if (name === "test") {
       if (state.test.phase === "inputTest") {
         updateTestPhaseVisibility();
@@ -1026,7 +1069,8 @@ nav.tabbar.is-hidden { display: none; }
         '<span class="w-pos">' + escapeHtml(w.pos || "") + '</span></div>' +
         (expanded
           ? '<div class="w-meaning">' + escapeHtml(w.meaning || "") + '</div>'
-          : '<div class="w-meaning-placeholder">タップで意味を表示</div>');
+          : '<div class="w-meaning-placeholder">タップで意味を表示</div>') +
+        '<div class="row-hist">' + renderHistoryBlock(w.no) + '</div>';
       textWrap.addEventListener("click", function () {
         state.list.expanded[w.no] = !state.list.expanded[w.no];
         renderList();
@@ -1039,7 +1083,7 @@ nav.tabbar.is-hidden { display: none; }
       var detail = document.createElement("div");
       detail.className = "row-detail";
       if (!expanded) detail.setAttribute("hidden", "");
-      var detailHtml = '<div class="detail-line"><span class="detail-label">記録</span>' + renderHistoryBlock(w.no) + '</div>';
+      var detailHtml = "";
       if (w.tip) {
         detailHtml += '<div class="detail-line"><span class="detail-label">覚え方</span><p>' + escapeHtml(w.tip) + '</p></div>';
       }
@@ -1068,7 +1112,9 @@ nav.tabbar.is-hidden { display: none; }
       chip.innerHTML = '<b>' + r + '</b><span class="rest">残り' + rangeRemaining(r) + '語</span>';
       chip.addEventListener("click", function () {
         state.flip.range = r;
+        state.list.range = r;
         renderFlipChips();
+        flipBuildDeck();
       });
       wrap.appendChild(chip);
     });
@@ -1169,11 +1215,13 @@ nav.tabbar.is-hidden { display: none; }
     state.flip.shuffle = !state.flip.shuffle;
     e.target.textContent = "シャッフル: " + (state.flip.shuffle ? "オン" : "オフ");
     e.target.setAttribute("aria-pressed", String(state.flip.shuffle));
+    flipBuildDeck();
   });
   document.getElementById("flipUnlearnedBtn").addEventListener("click", function (e) {
     state.flip.unlearnedOnly = !state.flip.unlearnedOnly;
     e.target.textContent = "未習得だけ: " + (state.flip.unlearnedOnly ? "オン" : "オフ");
     e.target.setAttribute("aria-pressed", String(state.flip.unlearnedOnly));
+    flipBuildDeck();
   });
   document.getElementById("flipStartBtn").addEventListener("click", flipBuildDeck);
 
@@ -1438,6 +1486,25 @@ nav.tabbar.is-hidden { display: none; }
     renderTestSetup();
   });
 
+  document.getElementById("abortChoiceBtn").addEventListener("click", function () {
+    if (!window.confirm("テストを中断しますか？")) return;
+    var answers = state.test.answers;
+    if (answers.length) {
+      var correctCount = answers.filter(function (a) { return a.correct; }).length;
+      addSession({
+        id: makeSessionId(),
+        source: "app",
+        type: "choice",
+        at: new Date().toISOString(),
+        ranges: sessionRangesFromNos(answers.map(function (a) { return a.no; })),
+        total: answers.length,
+        correct: correctCount
+      });
+    }
+    state.test.phase = "setup";
+    renderTestSetup();
+  });
+
   // ---------- Input test ----------
   var DRAFT_KEY = "tango_input_draft_v1";
   var VERDICT_LABELS = { correct: "正解", close: "近い（正解扱い）", wrong: "不正解" };
@@ -1653,6 +1720,31 @@ nav.tabbar.is-hidden { display: none; }
     if (state.test.inputRetryPool && state.test.inputRetryPool.length) startInputTest(state.test.inputRetryPool);
   });
   document.getElementById("backToSetupInputBtn").addEventListener("click", function () {
+    state.test.phase = "setup";
+    renderTestSetup();
+  });
+
+  document.getElementById("abortInputBtn").addEventListener("click", function () {
+    if (!window.confirm("テストを中断しますか？")) return;
+    var answered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() !== ""; });
+    if (answered.length) {
+      var correctCount = 0;
+      answered.forEach(function (q) {
+        var g = window.tangoGrade(q.answer, q.meaning);
+        appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
+        if (g.verdict !== "wrong") correctCount++;
+      });
+      addSession({
+        id: makeSessionId(),
+        source: "app",
+        type: "input",
+        at: new Date().toISOString(),
+        ranges: sessionRangesFromNos(answered.map(function (q) { return q.no; })),
+        total: answered.length,
+        correct: correctCount
+      });
+    }
+    clearInputDraft();
     state.test.phase = "setup";
     renderTestSetup();
   });
