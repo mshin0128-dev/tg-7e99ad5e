@@ -73,7 +73,7 @@ html { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
 html, body { margin: 0; padding: 0; background: var(--bg); }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", sans-serif;
   color: var(--text);
   background: var(--bg);
   font-size: 16px;
@@ -319,6 +319,20 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .bar-fill.acc { background: linear-gradient(135deg, #2E9B6B, #67C79A); }
 .bar-none { font-size: 13px; color: var(--sub); }
 
+.hist-wrap { margin-top: 2px; min-width: 0; }
+.hist-str { font-size: 18px; line-height: 1.4; letter-spacing: 0.12em; word-break: break-all; overflow-wrap: anywhere; font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", sans-serif; }
+.hist-good { color: var(--good); }
+.hist-bad { color: var(--danger); }
+.hist-stats { font-size: 12px; color: var(--sub); margin-top: 2px; }
+.hist-none { font-size: 12px; color: var(--sub); }
+
+ul.session-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+li.session-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.session-date { font-size: 12px; color: var(--sub); margin-bottom: 2px; }
+.session-main { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.session-label { font-weight: 600; overflow-wrap: anywhere; }
+.session-score { color: var(--sub); font-size: 13px; flex: none; }
+
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .settings-row:last-child { border-bottom: none; }
 .settings-row .st-label { font-weight: 600; }
@@ -345,6 +359,7 @@ nav.tabbar {
   box-shadow: 0 10px 28px rgba(31,26,46,0.16);
   z-index: 200;
 }
+nav.tabbar.is-hidden { display: none; }
 .tab-btn {
   flex: 1;
   min-height: 44px;
@@ -407,6 +422,10 @@ nav.tabbar {
           <div class="detail-line" id="flipBackExampleWrap">
             <span class="detail-label">例文</span>
             <p id="flipBackExample"></p>
+          </div>
+          <div class="detail-line">
+            <span class="detail-label">記録</span>
+            <div id="flipBackHistory"></div>
           </div>
         </div>
       </div>
@@ -506,7 +525,9 @@ nav.tabbar {
     <h2 class="view-title" style="font-size:15px;">範囲ごとの習得</h2>
     <div class="card" style="margin-bottom:16px;" id="progRangeLearned"></div>
     <h2 class="view-title" style="font-size:15px;">範囲ごとの正答率</h2>
-    <div class="card" id="progRangeAccuracy"></div>
+    <div class="card" style="margin-bottom:16px;" id="progRangeAccuracy"></div>
+    <h2 class="view-title" style="font-size:15px;">テストの記録</h2>
+    <div class="card" id="progSessionList"></div>
   </section>
 
   <section class="view" id="view-settings">
@@ -560,7 +581,7 @@ nav.tabbar {
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12c</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12d</p>
   </section>
 </div>
 
@@ -610,6 +631,7 @@ nav.tabbar {
 </nav>
 
 <script src="words.js"></script>
+<script src="results.js"></script>
 <script>
 (function () {
   "use strict";
@@ -621,15 +643,61 @@ nav.tabbar {
   var wordByNo = {};
   ALL_WORDS.forEach(function (w) { wordByNo[w.no] = w; });
 
-  var progress = { learned: {}, history: {} };
+  var progress = { learned: {}, history: {}, sessions: [] };
 
-  function buildInitialProgress() {
+  function mergeHistoryStrings(excelH, savedH) {
+    excelH = excelH || "";
+    savedH = savedH || "";
+    if (!savedH) return excelH;
+    if (savedH.indexOf(excelH) === 0) return savedH;
+    if (excelH.indexOf(savedH) === 0) return excelH;
+    return excelH + savedH;
+  }
+
+  function excelSessions() {
+    var fromData = (window.TANGO_DATA && window.TANGO_DATA.sessions) || [];
+    var fromResults = (window.TANGO_RESULTS && window.TANGO_RESULTS.sessions) || [];
+    var out = [], seen = {};
+    fromData.concat(fromResults).forEach(function (s) {
+      if (!s || !s.id || seen[s.id]) return;
+      seen[s.id] = true;
+      out.push(s);
+    });
+    return out;
+  }
+
+  function mergeSessionsWithExcel(savedSessions) {
+    var result = Array.isArray(savedSessions) ? savedSessions.slice() : [];
+    var ids = {};
+    result.forEach(function (s) { if (s && s.id) ids[s.id] = true; });
+    excelSessions().forEach(function (s) {
+      if (!ids[s.id]) { result.push(s); ids[s.id] = true; }
+    });
+    return result;
+  }
+
+  function mergeWithExcel(savedLearned, savedHistory, savedSessions) {
+    savedLearned = savedLearned || {};
+    savedHistory = savedHistory || {};
     var learned = {}, history = {};
     ALL_WORDS.forEach(function (w) {
-      learned[w.no] = !!w.learned;
-      history[w.no] = w.history || "";
+      var hasSaved = Object.prototype.hasOwnProperty.call(savedLearned, w.no) ||
+        Object.prototype.hasOwnProperty.call(savedLearned, String(w.no));
+      if (hasSaved) {
+        var v = Object.prototype.hasOwnProperty.call(savedLearned, w.no) ? savedLearned[w.no] : savedLearned[String(w.no)];
+        learned[w.no] = !!v;
+      } else {
+        learned[w.no] = !!w.learned;
+      }
+      var savedH = Object.prototype.hasOwnProperty.call(savedHistory, w.no) ? savedHistory[w.no] :
+        (Object.prototype.hasOwnProperty.call(savedHistory, String(w.no)) ? savedHistory[String(w.no)] : "");
+      history[w.no] = mergeHistoryStrings(w.history || "", savedH);
     });
-    return { learned: learned, history: history };
+    return { learned: learned, history: history, sessions: mergeSessionsWithExcel(savedSessions) };
+  }
+
+  function buildInitialProgress() {
+    return mergeWithExcel({}, {}, []);
   }
 
   function saveProgress() {
@@ -646,14 +714,49 @@ nav.tabbar {
     }
     try {
       var parsed = JSON.parse(raw);
-      progress = {
-        learned: (parsed && typeof parsed.learned === "object" && parsed.learned) ? parsed.learned : {},
-        history: (parsed && typeof parsed.history === "object" && parsed.history) ? parsed.history : {}
-      };
+      var savedLearned = (parsed && typeof parsed.learned === "object" && parsed.learned) ? parsed.learned : {};
+      var savedHistory = (parsed && typeof parsed.history === "object" && parsed.history) ? parsed.history : {};
+      var savedSessions = (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [];
+      progress = mergeWithExcel(savedLearned, savedHistory, savedSessions);
+      saveProgress();
     } catch (e) {
       progress = buildInitialProgress();
       saveProgress();
     }
+  }
+
+  function addSession(session) {
+    if (!Array.isArray(progress.sessions)) progress.sessions = [];
+    progress.sessions.push(session);
+    saveProgress();
+    return session;
+  }
+
+  function makeSessionId() {
+    return "app-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+  }
+
+  function sessionRangesFromNos(nos) {
+    var seen = {}, out = [];
+    nos.forEach(function (no) {
+      var w = wordByNo[no];
+      if (w && !seen[w.range]) { seen[w.range] = true; out.push(w.range); }
+    });
+    return out;
+  }
+
+  function renderHistoryBlock(no) {
+    var h = getHistory(no);
+    if (!h) return '<div class="hist-wrap"><span class="hist-none">まだ記録なし</span></div>';
+    var chars = "", goodCount = 0, missCount = 0;
+    for (var i = 0; i < h.length; i++) {
+      var c = h[i];
+      if (c === "○") { goodCount++; chars += '<span class="hist-good">○</span>'; }
+      else { missCount++; chars += '<span class="hist-bad">×</span>'; }
+    }
+    var acc = Math.round((goodCount / h.length) * 100);
+    return '<div class="hist-wrap"><div class="hist-str">' + chars + '</div>' +
+      '<div class="hist-stats">×' + missCount + '回 ・ 正答率' + acc + '%</div></div>';
   }
 
   function isLearned(no) {
@@ -826,7 +929,7 @@ nav.tabbar {
       unlearnedOnly: false,
       count: 20,
       questions: [], index: 0, answers: [], retryPool: null,
-      inputQuestions: [], inputResults: [], inputRetryPool: null
+      inputQuestions: [], inputResults: [], inputRetryPool: null, currentInputSession: null
     }
   };
 
@@ -936,7 +1039,7 @@ nav.tabbar {
       var detail = document.createElement("div");
       detail.className = "row-detail";
       if (!expanded) detail.setAttribute("hidden", "");
-      var detailHtml = "";
+      var detailHtml = '<div class="detail-line"><span class="detail-label">記録</span>' + renderHistoryBlock(w.no) + '</div>';
       if (w.tip) {
         detailHtml += '<div class="detail-line"><span class="detail-label">覚え方</span><p>' + escapeHtml(w.tip) + '</p></div>';
       }
@@ -1003,6 +1106,7 @@ nav.tabbar {
       back.hidden = true;
       chk.checked = false;
       chk.disabled = true;
+      document.getElementById("flipBackHistory").innerHTML = "";
       return;
     }
     chk.disabled = false;
@@ -1014,6 +1118,7 @@ nav.tabbar {
     document.getElementById("flipBackTipWrap").style.display = w.tip ? "" : "none";
     document.getElementById("flipBackExample").textContent = w.example || "";
     document.getElementById("flipBackExampleWrap").style.display = w.example ? "" : "none";
+    document.getElementById("flipBackHistory").innerHTML = renderHistoryBlock(w.no);
 
     front.hidden = state.flip.flipped;
     back.hidden = !state.flip.flipped;
@@ -1290,6 +1395,16 @@ nav.tabbar {
     document.getElementById("resultAccuracy").textContent = acc + "%";
     document.getElementById("resultCorrect").textContent = correctCount + " / " + total;
 
+    addSession({
+      id: makeSessionId(),
+      source: "app",
+      type: "choice",
+      at: new Date().toISOString(),
+      ranges: sessionRangesFromNos(answers.map(function (a) { return a.no; })),
+      total: total,
+      correct: correctCount
+    });
+
     var wrongs = answers.filter(function (a) { return !a.correct; });
     var wrongList = document.getElementById("resultWrongList");
     wrongList.innerHTML = "";
@@ -1332,6 +1447,7 @@ nav.tabbar {
     state.test.inputQuestions = chosen.map(function (w) {
       return { no: w.no, word: w.word, pos: w.pos, meaning: w.meaning, answer: "" };
     });
+    state.test.currentInputSession = null;
     state.test.phase = "inputTest";
     updateTestPhaseVisibility();
     renderInputTest(false);
@@ -1493,7 +1609,16 @@ nav.tabbar {
     r.verdict = newVerdict;
     r.manual = true;
     rewriteLastHistoryMark(no, newVerdict === "wrong" ? "×" : "○");
+    syncCurrentInputSessionScore();
     renderInputResult();
+  }
+
+  function syncCurrentInputSessionScore() {
+    var session = state.test.currentInputSession;
+    if (!session) return;
+    var stats = computeInputStats(state.test.inputResults);
+    session.correct = stats.good;
+    saveProgress();
   }
 
   function gradeInputTest() {
@@ -1507,6 +1632,16 @@ nav.tabbar {
     state.test.inputResults = results;
     state.test.phase = "inputResult";
     clearInputDraft();
+    var stats = computeInputStats(results);
+    state.test.currentInputSession = addSession({
+      id: makeSessionId(),
+      source: "app",
+      type: "input",
+      at: new Date().toISOString(),
+      ranges: sessionRangesFromNos(results.map(function (r) { return r.no; })),
+      total: stats.total,
+      correct: stats.good
+    });
     updateTestPhaseVisibility();
     renderInputResult();
     maybeRunGeminiCheck(results);
@@ -1592,6 +1727,7 @@ nav.tabbar {
           rewriteLastHistoryMark(r.no, "○");
         }
       });
+      syncCurrentInputSessionScore();
       if (state.test.phase === "inputResult") renderInputResult();
     }).catch(function () {
       showAiNote(true);
@@ -1668,6 +1804,68 @@ nav.tabbar {
       }
       accWrap.appendChild(row);
     });
+
+    renderSessionList();
+  }
+
+  function sessionTimestamp(s) {
+    if (s.date) {
+      var t = Date.parse(s.date);
+      if (!isNaN(t)) return t;
+    }
+    if (s.at) {
+      var t2 = Date.parse(s.at);
+      if (!isNaN(t2)) return t2;
+    }
+    return -Infinity;
+  }
+
+  function sessionLabel(s) {
+    if (s.source === "excel") {
+      return (s.range || "") + (s.round ? (" " + s.round) : "");
+    }
+    var ranges = (s.ranges && s.ranges.length) ? s.ranges.join("・") : "";
+    var typeLabel = s.type === "choice" ? "4択" : (s.type === "input" ? "入力" : (s.type || ""));
+    return (ranges ? ranges + " ・ " : "") + typeLabel;
+  }
+
+  function sessionDateLabel(s) {
+    if (s.date) return s.date;
+    if (s.at) {
+      var d = new Date(s.at);
+      if (!isNaN(d.getTime())) {
+        var pad = function (n) { return String(n).padStart(2, "0"); };
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+      }
+    }
+    return "日付不明";
+  }
+
+  function renderSessionList() {
+    var wrap = document.getElementById("progSessionList");
+    var sessions = (progress.sessions || []).slice().sort(function (a, b) {
+      return sessionTimestamp(b) - sessionTimestamp(a);
+    });
+    wrap.innerHTML = "";
+    if (!sessions.length) {
+      wrap.innerHTML = '<p class="empty-msg" style="padding:12px 0;">まだ記録がありません</p>';
+      return;
+    }
+    var ul = document.createElement("ul");
+    ul.className = "session-list";
+    sessions.forEach(function (s) {
+      var li = document.createElement("li");
+      li.className = "session-item";
+      var scoreText = (s.correct === null || s.correct === undefined)
+        ? "正解数の記録なし"
+        : (s.correct + " / " + s.total);
+      li.innerHTML =
+        '<div class="session-date">' + escapeHtml(sessionDateLabel(s)) + '</div>' +
+        '<div class="session-main"><span class="session-label">' + escapeHtml(sessionLabel(s)) + '</span>' +
+        '<span class="session-score">' + escapeHtml(scoreText) + '</span></div>';
+      ul.appendChild(li);
+    });
+    wrap.appendChild(ul);
   }
 
   // ---------- Settings ----------
@@ -1708,7 +1906,8 @@ nav.tabbar {
         var nextLearned = {}, nextHistory = {};
         Object.keys(parsed.learned).forEach(function (k) { nextLearned[k] = !!parsed.learned[k]; });
         Object.keys(parsed.history).forEach(function (k) { nextHistory[k] = String(parsed.history[k] || ""); });
-        progress = { learned: nextLearned, history: nextHistory };
+        var nextSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
+        progress = mergeWithExcel(nextLearned, nextHistory, nextSessions);
         saveProgress();
         msg.style.display = "";
         msg.className = "import-msg ok";
@@ -1744,6 +1943,31 @@ nav.tabbar {
     if (state.test.phase === "setup") renderTestSetup();
     renderProgress();
   }
+
+  // ---------- Tabbar keyboard avoidance ----------
+  (function () {
+    var tabbarEl = document.getElementById("tabbar");
+    function isFormFocused() {
+      var el = document.activeElement;
+      return !!(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"));
+    }
+    function keyboardLikelyOpen() {
+      if (!window.visualViewport) return false;
+      var layoutHeight = document.documentElement.clientHeight || window.innerHeight;
+      return (layoutHeight - window.visualViewport.height) > 80;
+    }
+    function updateTabbarVisibility() {
+      var hide = isFormFocused() || keyboardLikelyOpen();
+      tabbarEl.classList.toggle("is-hidden", hide);
+    }
+    document.addEventListener("focusin", updateTabbarVisibility);
+    document.addEventListener("focusout", function () { setTimeout(updateTabbarVisibility, 0); });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateTabbarVisibility);
+      window.visualViewport.addEventListener("scroll", updateTabbarVisibility);
+    }
+    window.addEventListener("resize", updateTabbarVisibility);
+  })();
 
   // ---------- Init ----------
   loadProgress();

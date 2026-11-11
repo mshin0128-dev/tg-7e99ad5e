@@ -1,9 +1,10 @@
 /* same-folder offline cache only */
-var CACHE_NAME = "tango-cache-v4";
+var CACHE_NAME = "tango-cache-v5";
 var SCOPE_URL = new URL("./", self.location.href);
 var ASSETS = [
   "./index.html",
   "./words.js",
+  "./results.js",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon-192.png",
