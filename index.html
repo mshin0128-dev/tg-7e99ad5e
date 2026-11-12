@@ -309,6 +309,8 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 }
 .ai-note { font-size: 12px; color: var(--sub); margin: 0 0 10px; }
 .input-result-item { margin-bottom: 12px; }
+.input-result-item .detail-line { margin-top: 8px; min-width: 0; }
+.input-result-item .tip-textarea { min-height: 56px; }
 .ir-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; min-width: 0; }
 .ir-no { font-size: 12px; color: var(--sub); flex: none; }
 .ir-word { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
@@ -632,7 +634,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12h</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12i</p>
   </section>
 </div>
 
@@ -1992,6 +1994,20 @@ nav.tabbar.is-hidden { display: none; }
     saveProgress();
   }
 
+  function refreshResultCards() {
+    if (state.test.phase === "inputResult") {
+      renderInputResult();
+    } else if (state.test.phase === "choiceResult") {
+      renderResultList(state.test.answers.map(function (a) {
+        return {
+          no: a.no, word: a.word, meaning: a.meaning,
+          verdict: a.correct ? "correct" : "wrong",
+          answer: a.chosen, showManualButtons: false
+        };
+      }));
+    }
+  }
+
   function buildResultItemCard(item) {
     var div = document.createElement("div");
     div.className = "input-result-item card";
@@ -2009,16 +2025,22 @@ nav.tabbar.is-hidden { display: none; }
           '<button type="button" class="btn btn-mark-correct" data-no="' + item.no + '">正解にする</button>' +
           '<button type="button" class="btn btn-mark-wrong" data-no="' + item.no + '">不正解にする</button>' +
           '</div>'
-        : "") +
-      '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;">' +
-      '<input type="checkbox" class="result-learned-chk" data-no="' + item.no + '"' + (isLearned(item.no) ? " checked" : "") + ' style="width:22px;height:22px;">覚えた</label>';
+        : "");
     if (item.showManualButtons) {
       div.querySelector(".btn-mark-correct").addEventListener("click", function () { manualSetVerdict(item.no, "correct"); });
       div.querySelector(".btn-mark-wrong").addEventListener("click", function () { manualSetVerdict(item.no, "wrong"); });
     }
-    div.querySelector(".result-learned-chk").addEventListener("change", function (e) {
+    var tipLine = document.createElement("div");
+    tipLine.className = "detail-line";
+    renderTipBlockInto(tipLine, item.no, state.test, refreshResultCards);
+    div.appendChild(tipLine);
+    var learnedLabel = document.createElement("label");
+    learnedLabel.setAttribute("style", "display:flex;align-items:center;gap:8px;margin-top:10px;");
+    learnedLabel.innerHTML = '<input type="checkbox" class="result-learned-chk" data-no="' + item.no + '"' + (isLearned(item.no) ? " checked" : "") + ' style="width:22px;height:22px;">覚えた';
+    learnedLabel.querySelector(".result-learned-chk").addEventListener("change", function (e) {
       setLearned(item.no, e.target.checked);
     });
+    div.appendChild(learnedLabel);
     return div;
   }
 
