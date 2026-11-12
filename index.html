@@ -632,7 +632,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12g</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12h</p>
   </section>
 </div>
 
@@ -2071,18 +2071,14 @@ nav.tabbar.is-hidden { display: none; }
   function gradeInputTest() {
     showAiNote(false);
     var qs = state.test.inputQuestions;
-    var confirmedNos = [], unansweredNos = [], wrongNos = [];
+    var confirmedNos = [], wrongNos = [];
     var results = qs.map(function (q) {
       var answered = (q.answer || "").trim() !== "";
       var g = window.tangoGrade(q.answer, q.meaning);
       appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
       if (g.verdict !== "wrong") setLearned(q.no, true);
-      if (answered) {
-        confirmedNos.push(q.no);
-        if (g.verdict === "wrong") wrongNos.push(q.no);
-      } else {
-        unansweredNos.push(q.no);
-      }
+      confirmedNos.push(q.no);
+      if (!answered || g.verdict === "wrong") wrongNos.push(q.no);
       return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer, verdict: g.verdict };
     });
     state.test.inputResults = results;
@@ -2106,7 +2102,7 @@ nav.tabbar.is-hidden { display: none; }
         return { no: r.no, word: r.word, meaning: r.meaning, pos: r.pos || (w ? w.pos : ""), mark: r.verdict === "wrong" ? "×" : "○", answer: r.answer || "", verdict: r.verdict };
       })
     });
-    reconcileCycleAfterTest(key, confirmedNos, wrongNos, unansweredNos);
+    reconcileCycleAfterTest(key, confirmedNos, wrongNos, []);
     updateTestPhaseVisibility();
     renderInputResult();
     maybeRunGeminiCheck(results);
