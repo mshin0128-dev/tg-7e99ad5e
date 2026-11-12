@@ -196,6 +196,16 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .detail-line p { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
 .empty-msg { color: var(--sub); text-align: center; padding: 32px 0; font-size: 14px; }
 
+.tip-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-bottom: 4px; }
+.tip-label-row .detail-label { margin-bottom: 0; }
+.tip-edit-btn { min-height: 28px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--accent); padding: 0 10px; font-size: 12px; font-weight: 700; flex: none; }
+.detail-line p.tip-display { white-space: pre-wrap; }
+.detail-line p.tip-placeholder { color: var(--sub); opacity: 0.7; }
+.tip-textarea { display: block; width: 100%; box-sizing: border-box; min-height: 76px; font-size: 16px; line-height: 1.4; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text); resize: vertical; font-family: inherit; }
+.flip-back .tip-textarea { min-height: 56px; }
+.tip-btn-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.tip-btn-row .btn { min-height: 36px; padding: 0 14px; font-size: 14px; }
+
 .btn {
   min-height: 44px;
   border-radius: 14px;
@@ -233,7 +243,7 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .flip-no { font-size: 13px; color: var(--sub); }
 .flip-word { font-size: clamp(28px, 9vw, 40px); font-weight: 800; overflow-wrap: anywhere; }
 .flip-hint { font-size: 13px; color: var(--sub); margin-top: 6px; }
-.flip-back { flex: 1; min-width: 0; overflow-y: auto; max-height: 50vh; }
+.flip-back { flex: 1; min-width: 0; overflow-y: auto; max-height: min(38vh, calc(100dvh - 420px)); }
 .flip-back[hidden] { display: none; }
 .flip-back .w-pos { display: inline-block; margin-bottom: 8px; }
 .flip-back .flip-meaning { font-size: 22px; font-weight: 700; margin: 4px 0 12px; overflow-wrap: anywhere; }
@@ -451,10 +461,7 @@ nav.tabbar.is-hidden { display: none; }
         <div class="flip-back" id="flipBack" hidden>
           <div class="w-pos" id="flipBackPos"></div>
           <div class="flip-meaning" id="flipBackMeaning"></div>
-          <div class="detail-line" id="flipBackTipWrap">
-            <span class="detail-label">覚え方</span>
-            <p id="flipBackTip"></p>
-          </div>
+          <div class="detail-line" id="flipBackTipWrap"></div>
           <div class="detail-line" id="flipBackExampleWrap">
             <span class="detail-label">例文</span>
             <p id="flipBackExample"></p>
@@ -625,7 +632,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12f</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12g</p>
   </section>
 </div>
 
@@ -687,7 +694,7 @@ nav.tabbar.is-hidden { display: none; }
   var wordByNo = {};
   ALL_WORDS.forEach(function (w) { wordByNo[w.no] = w; });
 
-  var progress = { learned: {}, history: {}, sessions: [], cycles: {} };
+  var progress = { learned: {}, history: {}, sessions: [], cycles: {}, tips: {} };
 
   function sanitizeSessions(list) {
     return (Array.isArray(list) ? list : []).filter(function (s) {
@@ -726,10 +733,11 @@ nav.tabbar.is-hidden { display: none; }
     return result;
   }
 
-  function mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles) {
+  function mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles, savedTips) {
     savedLearned = savedLearned || {};
     savedHistory = savedHistory || {};
-    var learned = {}, history = {};
+    savedTips = (savedTips && typeof savedTips === "object") ? savedTips : {};
+    var learned = {}, history = {}, tips = {};
     ALL_WORDS.forEach(function (w) {
       var hasSaved = Object.prototype.hasOwnProperty.call(savedLearned, w.no) ||
         Object.prototype.hasOwnProperty.call(savedLearned, String(w.no));
@@ -742,17 +750,26 @@ nav.tabbar.is-hidden { display: none; }
       var savedH = Object.prototype.hasOwnProperty.call(savedHistory, w.no) ? savedHistory[w.no] :
         (Object.prototype.hasOwnProperty.call(savedHistory, String(w.no)) ? savedHistory[String(w.no)] : "");
       history[w.no] = mergeHistoryStrings(w.history || "", savedH);
+      var hasTip = Object.prototype.hasOwnProperty.call(savedTips, w.no) ||
+        Object.prototype.hasOwnProperty.call(savedTips, String(w.no));
+      if (hasTip) {
+        var tv = Object.prototype.hasOwnProperty.call(savedTips, w.no) ? savedTips[w.no] : savedTips[String(w.no)];
+        if (typeof tv === "string" && tv !== (w.tip || "")) {
+          tips[w.no] = tv;
+        }
+      }
     });
     return {
       learned: learned,
       history: history,
       sessions: mergeSessionsWithExcel(sanitizeSessions(savedSessions)),
-      cycles: (savedCycles && typeof savedCycles === "object") ? savedCycles : {}
+      cycles: (savedCycles && typeof savedCycles === "object") ? savedCycles : {},
+      tips: tips
     };
   }
 
   function buildInitialProgress() {
-    return mergeWithExcel({}, {}, [], {});
+    return mergeWithExcel({}, {}, [], {}, {});
   }
 
   function saveProgress() {
@@ -773,7 +790,8 @@ nav.tabbar.is-hidden { display: none; }
       var savedHistory = (parsed && typeof parsed.history === "object" && parsed.history) ? parsed.history : {};
       var savedSessions = (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [];
       var savedCycles = (parsed && typeof parsed.cycles === "object" && parsed.cycles) ? parsed.cycles : {};
-      progress = mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles);
+      var savedTips = (parsed && typeof parsed.tips === "object" && parsed.tips) ? parsed.tips : {};
+      progress = mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles, savedTips);
       saveProgress();
     } catch (e) {
       progress = buildInitialProgress();
@@ -838,6 +856,135 @@ nav.tabbar.is-hidden { display: none; }
     var cur = getHistory(no);
     progress.history[no] = cur + mark;
     saveProgress();
+  }
+
+  function getOriginalTip(no) {
+    var w = wordByNo[no];
+    return (w && w.tip) || "";
+  }
+
+  function getTipOverride(no) {
+    if (!progress.tips || typeof progress.tips !== "object") return null;
+    var hasOwn = Object.prototype.hasOwnProperty.call(progress.tips, no) ? no :
+      (Object.prototype.hasOwnProperty.call(progress.tips, String(no)) ? String(no) : null);
+    if (hasOwn === null) return null;
+    var v = progress.tips[hasOwn];
+    return (typeof v === "string") ? v : null;
+  }
+
+  function getEffectiveTip(no) {
+    var ov = getTipOverride(no);
+    return ov !== null ? ov : getOriginalTip(no);
+  }
+
+  function setTipOverride(no, value) {
+    if (!progress.tips || typeof progress.tips !== "object") progress.tips = {};
+    delete progress.tips[no];
+    delete progress.tips[String(no)];
+    if (value !== getOriginalTip(no)) {
+      progress.tips[no] = value;
+    }
+    saveProgress();
+  }
+
+  function clearTipOverride(no) {
+    if (progress.tips && typeof progress.tips === "object") {
+      delete progress.tips[no];
+      delete progress.tips[String(no)];
+    }
+    saveProgress();
+  }
+
+  function renderTipBlockInto(container, no, holder, onChange) {
+    container.innerHTML = "";
+    container.onclick = function (e) { e.stopPropagation(); };
+    var original = getOriginalTip(no);
+    var effective = getEffectiveTip(no);
+    var editingState = holder.tipEdit;
+    var editing = !!(editingState && editingState.no === no);
+
+    var labelRow = document.createElement("div");
+    labelRow.className = "tip-label-row";
+    var label = document.createElement("span");
+    label.className = "detail-label";
+    label.textContent = "覚え方";
+    labelRow.appendChild(label);
+
+    if (editing) {
+      container.appendChild(labelRow);
+
+      var ta = document.createElement("textarea");
+      ta.className = "tip-textarea";
+      ta.value = editingState.draft;
+      ta.setAttribute("aria-label", "覚え方を編集");
+      ta.addEventListener("click", function (e) { e.stopPropagation(); });
+      ta.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+      ta.addEventListener("input", function () { editingState.draft = ta.value; });
+      container.appendChild(ta);
+      if (editingState.focus) {
+        editingState.focus = false;
+        setTimeout(function () { ta.focus(); }, 0);
+      }
+
+      var btnRow = document.createElement("div");
+      btnRow.className = "tip-btn-row";
+
+      var saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.className = "btn primary";
+      saveBtn.textContent = "保存";
+      saveBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        setTipOverride(no, ta.value);
+        holder.tipEdit = null;
+        onChange();
+      });
+
+      var revertBtn = document.createElement("button");
+      revertBtn.type = "button";
+      revertBtn.className = "btn";
+      revertBtn.textContent = "元に戻す";
+      revertBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        clearTipOverride(no);
+        holder.tipEdit = null;
+        onChange();
+      });
+
+      btnRow.appendChild(saveBtn);
+      btnRow.appendChild(revertBtn);
+      container.appendChild(btnRow);
+      setTimeout(function () {
+        if (btnRow.scrollIntoView) btnRow.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }, 0);
+    } else {
+      var editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "tip-edit-btn";
+      editBtn.textContent = "編集";
+      editBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        holder.tipEdit = { no: no, draft: effective, focus: true };
+        onChange();
+      });
+      labelRow.appendChild(editBtn);
+      container.appendChild(labelRow);
+
+      var p = document.createElement("p");
+      if (effective) {
+        p.className = "tip-display";
+        p.textContent = effective;
+      } else {
+        p.className = "tip-display tip-placeholder";
+        p.textContent = "タップして覚え方を書く";
+      }
+      p.addEventListener("click", function (e) {
+        e.stopPropagation();
+        holder.tipEdit = { no: no, draft: effective, focus: true };
+        onChange();
+      });
+      container.appendChild(p);
+    }
   }
 
   function wordsInRange(range) {
@@ -1220,14 +1367,16 @@ nav.tabbar.is-hidden { display: none; }
       var detail = document.createElement("div");
       detail.className = "row-detail";
       if (!expanded) detail.setAttribute("hidden", "");
-      var detailHtml = "";
-      if (w.tip) {
-        detailHtml += '<div class="detail-line"><span class="detail-label">覚え方</span><p>' + escapeHtml(w.tip) + '</p></div>';
-      }
+      var tipLine = document.createElement("div");
+      tipLine.className = "detail-line";
+      renderTipBlockInto(tipLine, w.no, state.list, function () { renderList(); });
+      detail.appendChild(tipLine);
       if (w.example) {
-        detailHtml += '<div class="detail-line"><span class="detail-label">例文</span><p>' + escapeHtml(w.example) + '</p></div>';
+        var exLine = document.createElement("div");
+        exLine.className = "detail-line";
+        exLine.innerHTML = '<span class="detail-label">例文</span><p>' + escapeHtml(w.example) + '</p>';
+        detail.appendChild(exLine);
       }
-      detail.innerHTML = detailHtml;
       li.appendChild(detail);
 
       ul.appendChild(li);
@@ -1264,6 +1413,7 @@ nav.tabbar.is-hidden { display: none; }
     state.flip.deck = words;
     state.flip.index = 0;
     state.flip.flipped = false;
+    state.flip.tipEdit = null;
     renderFlipCard();
   }
 
@@ -1283,22 +1433,26 @@ nav.tabbar.is-hidden { display: none; }
       : "0 / 0";
 
     if (!w) {
+      state.flip.tipEdit = null;
       document.getElementById("flipFrontNo").textContent = "";
       document.getElementById("flipFrontWord").textContent = "カードがありません";
       front.hidden = false;
       back.hidden = true;
       chk.checked = false;
       chk.disabled = true;
+      document.getElementById("flipBackTipWrap").innerHTML = "";
       document.getElementById("flipBackHistory").innerHTML = "";
       return;
     }
+    if (state.flip.tipEdit && state.flip.tipEdit.no !== w.no) state.flip.tipEdit = null;
     chk.disabled = false;
     document.getElementById("flipFrontNo").textContent = "No." + w.no + " ・ " + (w.pos || "");
     document.getElementById("flipFrontWord").textContent = w.word;
     document.getElementById("flipBackPos").textContent = "品詞: " + (w.pos || "");
     document.getElementById("flipBackMeaning").textContent = w.meaning || "";
-    document.getElementById("flipBackTip").textContent = w.tip || "";
-    document.getElementById("flipBackTipWrap").style.display = w.tip ? "" : "none";
+    var tipWrap = document.getElementById("flipBackTipWrap");
+    tipWrap.style.display = "";
+    renderTipBlockInto(tipWrap, w.no, state.flip, function () { renderFlipCard(); });
     document.getElementById("flipBackExample").textContent = w.example || "";
     document.getElementById("flipBackExampleWrap").style.display = w.example ? "" : "none";
     document.getElementById("flipBackHistory").innerHTML = renderHistoryBlock(w.no);
@@ -1316,7 +1470,9 @@ nav.tabbar.is-hidden { display: none; }
 
   function flipGoto(delta) {
     if (!state.flip.deck.length) return;
-    state.flip.index = Math.max(0, Math.min(state.flip.deck.length - 1, state.flip.index + delta));
+    var next = Math.max(0, Math.min(state.flip.deck.length - 1, state.flip.index + delta));
+    if (next !== state.flip.index) state.flip.tipEdit = null;
+    state.flip.index = next;
     state.flip.flipped = false;
     renderFlipCard();
   }
@@ -1328,6 +1484,11 @@ nav.tabbar.is-hidden { display: none; }
     var sx = 0, sy = 0, tracking = false;
     outer.addEventListener("touchstart", function (e) {
       if (!e.touches[0]) return;
+      var el = e.target;
+      if (el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.tagName === "BUTTON" || (el.closest && el.closest("#flipBackTipWrap")))) {
+        tracking = false;
+        return;
+      }
       sx = e.touches[0].clientX; sy = e.touches[0].clientY; tracking = true;
     }, { passive: true });
     outer.addEventListener("touchend", function (e) {
@@ -2295,7 +2456,8 @@ nav.tabbar.is-hidden { display: none; }
         Object.keys(parsed.history).forEach(function (k) { nextHistory[k] = String(parsed.history[k] || ""); });
         var nextSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
         var nextCycles = (parsed.cycles && typeof parsed.cycles === "object") ? parsed.cycles : {};
-        progress = mergeWithExcel(nextLearned, nextHistory, nextSessions, nextCycles);
+        var nextTips = (parsed.tips && typeof parsed.tips === "object") ? parsed.tips : {};
+        progress = mergeWithExcel(nextLearned, nextHistory, nextSessions, nextCycles, nextTips);
         saveProgress();
         msg.style.display = "";
         msg.className = "import-msg ok";
@@ -2318,8 +2480,9 @@ nav.tabbar.is-hidden { display: none; }
 
   document.getElementById("resetBtn").addEventListener("click", function () {
     if (!window.confirm("学習記録をExcelの初期値に戻します。よろしいですか？")) return;
+    var keptTips = (progress.tips && typeof progress.tips === "object") ? progress.tips : {};
     try { localStorage.removeItem(PROGRESS_KEY); } catch (e) {}
-    progress = buildInitialProgress();
+    progress = mergeWithExcel({}, {}, [], {}, keptTips);
     saveProgress();
     renderAll();
   });
