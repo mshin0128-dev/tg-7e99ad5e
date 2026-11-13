@@ -540,7 +540,7 @@ nav.tabbar.is-hidden { display: none; }
     <h2 class="view-title">テスト</h2>
     <div id="testSetup">
       <div class="field">
-        <label class="field-label">範囲（複数選択可）</label>
+        <label class="field-label">範囲</label>
         <div class="chip-row" id="testRangeChips"></div>
       </div>
       <div class="field">
@@ -665,7 +665,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.13b</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.14a</p>
   </section>
 </div>
 
@@ -1724,16 +1724,9 @@ nav.tabbar.is-hidden { display: none; }
     if (r === "ALL") {
       state.test.allRanges = true;
       state.test.selectedRanges = [];
-    } else if (state.test.allRanges) {
+    } else {
       state.test.allRanges = false;
       state.test.selectedRanges = [r];
-    } else {
-      var idx = state.test.selectedRanges.indexOf(r);
-      if (idx !== -1) {
-        if (state.test.selectedRanges.length > 1) state.test.selectedRanges.splice(idx, 1);
-      } else {
-        state.test.selectedRanges.push(r);
-      }
     }
     renderTestSetup();
   }
