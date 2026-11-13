@@ -432,7 +432,7 @@ nav.tabbar.is-hidden { display: none; }
 <div id="app">
   <header class="appbar">
     <h1>TOEIC単語帳</h1>
-    <p id="appbarSub">No.1〜500</p>
+    <p id="appbarSub">No.1〜1000</p>
   </header>
 
   <section class="view active" id="view-list">
@@ -571,7 +571,7 @@ nav.tabbar.is-hidden { display: none; }
     <h2 class="view-title">進み具合</h2>
     <div class="card" style="margin-bottom:16px;">
       <div class="bar-row" style="margin-bottom:0;">
-        <div class="bar-label"><span class="nm">全体の習得</span><span class="vv" id="progOverallText">0 / 500</span></div>
+        <div class="bar-label"><span class="nm">全体の習得</span><span class="vv" id="progOverallText">0 / 1000</span></div>
         <div class="bar-track"><div class="bar-fill" id="progOverallBar" style="width:0%"></div></div>
       </div>
     </div>
@@ -634,7 +634,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-500<br>v2026.11.12i</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.13a</p>
   </section>
 </div>
 
@@ -691,7 +691,7 @@ nav.tabbar.is-hidden { display: none; }
 
   var PROGRESS_KEY = "tango_progress_v1";
   var THEME_KEY = "tango_theme_pref";
-  var RANGES = ["001-100", "101-200", "201-300", "301-400", "401-500"];
+  var RANGES = ["001-100", "101-200", "201-300", "301-400", "401-500", "501-600", "601-700", "701-800", "801-900", "901-1000"];
   var ALL_WORDS = (window.TANGO_DATA && window.TANGO_DATA.words) || [];
   var wordByNo = {};
   ALL_WORDS.forEach(function (w) { wordByNo[w.no] = w; });

@@ -1,7 +1,7 @@
 {
   "name": "TOEIC単語帳",
   "short_name": "単語帳",
-  "description": "TOEIC英単語帳 001-500",
+  "description": "TOEIC英単語帳 001-1000",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
