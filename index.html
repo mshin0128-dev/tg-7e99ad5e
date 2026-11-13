@@ -243,6 +243,8 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .flip-no { font-size: 13px; color: var(--sub); }
 .flip-word { font-size: clamp(28px, 9vw, 40px); font-weight: 800; overflow-wrap: anywhere; }
 .flip-hint { font-size: 13px; color: var(--sub); margin-top: 6px; }
+.flip-speak-wrap { display: flex; justify-content: center; min-width: 0; }
+.flip-speak-wrap:empty { display: none; }
 .flip-back { flex: 1; min-width: 0; overflow-y: auto; max-height: min(38vh, calc(100dvh - 420px)); }
 .flip-back[hidden] { display: none; }
 .flip-back .w-pos { display: inline-block; margin-bottom: 8px; }
@@ -260,26 +262,6 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 
 .field { margin-bottom: 14px; }
 .field label.field-label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 6px; font-weight: 600; }
-
-.answer-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-.answer-btn {
-  min-height: 52px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  text-align: left;
-  padding: 10px 14px;
-  font-size: 16px;
-  overflow-wrap: anywhere;
-}
-.answer-btn.correct { border-color: var(--good); background: var(--learned-bg); color: var(--good); font-weight: 700; }
-.answer-btn.wrong { border-color: var(--danger); background: var(--learned-bg); color: var(--danger); font-weight: 700; }
-.answer-btn[disabled] { opacity: 0.8; }
-
-.test-progress { text-align: center; font-size: 13px; color: var(--sub); margin-bottom: 8px; }
-.test-question-word { text-align: center; font-size: clamp(24px, 8vw, 34px); font-weight: 800; margin: 10px 0 2px; overflow-wrap: anywhere; }
-.test-question-sub { text-align: center; font-size: 13px; color: var(--sub); margin-bottom: 6px; }
 
 .result-stat-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .result-stat { flex: 1; min-width: 100px; background: var(--learned-bg); border-radius: 14px; padding: 12px; text-align: center; }
@@ -332,6 +314,18 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .bar-fill.acc { background: linear-gradient(135deg, #2E9B6B, #67C79A); }
 .bar-none { font-size: 13px; color: var(--sub); }
 
+.cycle-status { min-width: 0; }
+.cycle-row { font-size: 13px; color: var(--sub); margin-bottom: 4px; min-width: 0; overflow-wrap: anywhere; }
+.cycle-row:last-child { margin-bottom: 0; }
+.cycle-row .cv { color: var(--text); font-weight: 700; }
+
+.range-progress-block { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px dashed var(--border); min-width: 0; }
+.range-progress-block:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+.range-sub-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.range-sub-heading { font-size: 12px; font-weight: 700; color: var(--accent); margin-top: 6px; }
+.range-sub-row { font-size: 12px; color: var(--sub); min-width: 0; overflow-wrap: anywhere; }
+.range-sub-row b { color: var(--text); font-weight: 700; }
+
 .hist-wrap { margin-top: 2px; min-width: 0; }
 .hist-str { font-size: 18px; line-height: 1.4; letter-spacing: 0.12em; word-break: break-all; overflow-wrap: anywhere; font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", sans-serif; }
 .hist-good { color: var(--good); }
@@ -343,6 +337,59 @@ li.word-row.is-learned .w-pos { color: var(--learned-fg); }
 .row-hist .hist-str { font-size: 13px; letter-spacing: 0.08em; line-height: 1.3; }
 .row-hist .hist-stats { font-size: 11px; margin-top: 1px; }
 .row-hist .hist-none { font-size: 11px; }
+
+.cal-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-width: 0; }
+.cal-header .btn { min-height: 36px; min-width: 44px; padding: 0 10px; flex: none; }
+.cal-title { font-weight: 700; font-size: 15px; flex: 1; text-align: center; overflow-wrap: anywhere; min-width: 0; }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; min-width: 0; }
+.cal-weekday { text-align: center; font-size: 11px; color: var(--sub); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; min-width: 0; }
+.cal-cell {
+  position: relative;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--sub);
+  min-height: 38px;
+  min-width: 0;
+  padding: 2px 0;
+  font-family: inherit;
+}
+.cal-cell.is-pad { visibility: hidden; }
+.cal-cell.has-data { background: var(--learned-bg); color: var(--text); font-weight: 600; }
+.cal-cell.is-today { border-color: var(--accent); }
+.cal-cell.is-selected { border-color: var(--accent); background: var(--accent); color: #fff; }
+.cal-dots { display: flex; gap: 2px; height: 6px; align-items: center; }
+.cal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); flex: none; }
+.cal-cell.is-selected .cal-dot { background: #fff; }
+.cal-summary { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--sub); min-width: 0; }
+.cal-summary b { color: var(--text); font-weight: 700; }
+#calDayDetail { margin-top: 12px; min-width: 0; }
+#calDayDetail:empty { margin-top: 0; }
+
+.speak-btn {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.speak-btn svg { width: 17px; height: 17px; flex: none; }
+.input-q-word-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; min-width: 0; }
+.input-q-word-row .input-q-word { margin-bottom: 0; }
 
 ul.session-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 li.session-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
@@ -458,11 +505,13 @@ nav.tabbar.is-hidden { display: none; }
         <div class="flip-front" id="flipFront">
           <div class="flip-no" id="flipFrontNo"></div>
           <div class="flip-word" id="flipFrontWord">カードがありません</div>
+          <div class="flip-speak-wrap" id="flipFrontSpeakWrap"></div>
           <div class="flip-hint">タップして意味を見る</div>
         </div>
         <div class="flip-back" id="flipBack" hidden>
           <div class="w-pos" id="flipBackPos"></div>
           <div class="flip-meaning" id="flipBackMeaning"></div>
+          <div class="flip-speak-wrap" id="flipBackSpeakWrap"></div>
           <div class="detail-line" id="flipBackTipWrap"></div>
           <div class="detail-line" id="flipBackExampleWrap">
             <span class="detail-label">例文</span>
@@ -491,13 +540,6 @@ nav.tabbar.is-hidden { display: none; }
     <h2 class="view-title">テスト</h2>
     <div id="testSetup">
       <div class="field">
-        <label class="field-label">形式</label>
-        <div class="seg" id="testFormatSeg">
-          <button type="button" class="seg-btn" data-format="input">入力</button>
-          <button type="button" class="seg-btn" data-format="choice">4択</button>
-        </div>
-      </div>
-      <div class="field">
         <label class="field-label">範囲（複数選択可）</label>
         <div class="chip-row" id="testRangeChips"></div>
       </div>
@@ -513,35 +555,11 @@ nav.tabbar.is-hidden { display: none; }
         <div class="chip-row" id="testCountChips"></div>
       </div>
       <div class="card" style="margin-bottom:14px;">
-        <p class="ai-note" id="testCycleStatus" style="margin:0 0 10px;"></p>
+        <div class="cycle-status" id="testCycleStatus" style="margin:0 0 10px;"></div>
         <button type="button" class="btn block" id="cycleResetBtn" style="color:var(--danger);">周回をリセット</button>
       </div>
       <button class="btn primary block" id="testStartBtn">テストを始める</button>
       <p class="empty-msg" id="testSetupMsg" style="display:none;"></p>
-    </div>
-    <div id="testQuestion" style="display:none;">
-      <div class="test-progress" id="testProgress"></div>
-      <div class="test-question-sub">英→日：意味を選んでください</div>
-      <div class="test-question-word" id="testQuestionWord"></div>
-      <div class="answer-list" id="testAnswerList"></div>
-      <div class="btn-row">
-        <button class="btn primary block" id="testNextBtn" style="display:none;">次へ</button>
-      </div>
-      <div class="btn-row">
-        <button type="button" class="btn block" id="abortChoiceBtn" style="color:var(--danger);">中断</button>
-      </div>
-    </div>
-    <div id="testResult" style="display:none;">
-      <div class="result-stat-row">
-        <div class="result-stat"><div class="num" id="resultAccuracy">0%</div><div class="lbl">正答率</div></div>
-        <div class="result-stat"><div class="num" id="resultCorrect">0/0</div><div class="lbl">正解数</div></div>
-      </div>
-      <h2 class="view-title" style="font-size:15px;">出題した単語</h2>
-      <div id="resultList"></div>
-      <div class="btn-row">
-        <button class="btn primary" id="continueChoiceBtn">続けてテストする</button>
-        <button class="btn" id="backToSetupBtn">もう一度設定する</button>
-      </div>
     </div>
     <div id="inputTest" style="display:none;">
       <p class="resume-note" id="inputResumeNote" style="display:none;">前回の続きから再開しました</p>
@@ -579,6 +597,19 @@ nav.tabbar.is-hidden { display: none; }
     <div class="card" style="margin-bottom:16px;" id="progRangeLearned"></div>
     <h2 class="view-title" style="font-size:15px;">範囲ごとの正答率</h2>
     <div class="card" style="margin-bottom:16px;" id="progRangeAccuracy"></div>
+    <h2 class="view-title" style="font-size:15px;">学習記録カレンダー</h2>
+    <div class="card" style="margin-bottom:16px;" id="progCalendarCard">
+      <div class="cal-header">
+        <button type="button" class="btn" id="calPrevBtn" aria-label="前の月">&lt;</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button type="button" class="btn" id="calNextBtn" aria-label="次の月">&gt;</button>
+      </div>
+      <div class="cal-weekdays" id="calWeekdays"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-summary" id="calSummary"></div>
+      <p class="import-msg" id="calUnknownMsg" style="display:none;"></p>
+      <div id="calDayDetail"></div>
+    </div>
     <h2 class="view-title" style="font-size:15px;">テストの記録</h2>
     <div class="card" id="progSessionList"></div>
   </section>
@@ -634,7 +665,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.13a</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.13b</p>
   </section>
 </div>
 
@@ -799,6 +830,33 @@ nav.tabbar.is-hidden { display: none; }
       progress = buildInitialProgress();
       saveProgress();
     }
+  }
+
+  function reconcileReservedOnLoad() {
+    if (!progress.cycles || typeof progress.cycles !== "object") return;
+    var draft = loadInputDraft();
+    var keepKey = draft ? draft.activeCycleKey : null;
+    var keepNos = {};
+    if (draft && Array.isArray(draft.questions)) {
+      draft.questions.forEach(function (q) { keepNos[q.no] = true; });
+    }
+    var changed = false;
+    Object.keys(progress.cycles).forEach(function (key) {
+      var c = progress.cycles[key];
+      if (!c || !Array.isArray(c.reserved) || !c.reserved.length) return;
+      if (!Array.isArray(c.remaining)) c.remaining = [];
+      var stillReserved = [];
+      c.reserved.forEach(function (no) {
+        if (key === keepKey && keepNos[no]) {
+          stillReserved.push(no);
+        } else {
+          changed = true;
+          if (c.remaining.indexOf(no) === -1) c.remaining.push(no);
+        }
+      });
+      c.reserved = stillReserved;
+    });
+    if (changed) saveProgress();
   }
 
   function addSession(session) {
@@ -1013,6 +1071,52 @@ nav.tabbar.is-hidden { display: none; }
     });
   }
 
+  // ---------- Speech (pronunciation) ----------
+  var SPEAK_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 9v6h4l5 4V5L8 9H4z"></path>' +
+    '<path d="M16.3 8.7a5 5 0 0 1 0 6.6"></path>' +
+    '<path d="M19 6a8.5 8.5 0 0 1 0 12"></path>' +
+    '</svg>';
+
+  function supportsSpeech() {
+    return !!(window.speechSynthesis && typeof window.speechSynthesis.speak === "function");
+  }
+
+  function pickEnglishVoice(voices) {
+    if (!voices || !voices.length) return null;
+    var exact = voices.filter(function (v) { return v.lang === "en-US"; });
+    if (exact.length) return exact[0];
+    var en = voices.filter(function (v) { return /^en/i.test(v.lang || ""); });
+    return en.length ? en[0] : null;
+  }
+
+  function speakWord(word) {
+    if (!supportsSpeech() || !word) return;
+    try {
+      window.speechSynthesis.cancel();
+      var utter = new SpeechSynthesisUtterance(word);
+      utter.lang = "en-US";
+      var voices = typeof window.speechSynthesis.getVoices === "function" ? window.speechSynthesis.getVoices() : [];
+      var voice = pickEnglishVoice(voices);
+      if (voice) utter.voice = voice;
+      window.speechSynthesis.speak(utter);
+    } catch (e) {}
+  }
+
+  function buildSpeakBtn(word, extraClass) {
+    if (!supportsSpeech()) return null;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "speak-btn" + (extraClass ? " " + extraClass : "");
+    btn.setAttribute("aria-label", "発音を再生: " + word);
+    btn.innerHTML = SPEAK_ICON_SVG;
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      speakWord(word);
+    });
+    return btn;
+  }
+
   // ---------- Cycle (周回) ----------
   window.tangoCycle = {
     take: function (remaining, n) {
@@ -1087,6 +1191,7 @@ nav.tabbar.is-hidden { display: none; }
       c.remaining = shuffle(c.wrongLap.slice());
       c.wrongLap = [];
       pruneForUnchecked(c, mode, freshPoolNos);
+      c.lapTotal = c.remaining.length;
     }
   }
 
@@ -1096,7 +1201,70 @@ nav.tabbar.is-hidden { display: none; }
       c.lap = 1;
       c.remaining = shuffle(freshPoolNos.slice());
       c.everStarted = true;
+      c.lapTotal = c.remaining.length;
     }
+  }
+
+  function lapTotalForCycle(c, key) {
+    if (typeof c.lapTotal === "number" && c.lapTotal > 0) return { total: c.lapTotal, reliable: true };
+    var mode = cycleModeFromKey(key);
+    if ((c.lap || 1) === 1 && mode === "all") {
+      var rangeKey = key.slice(0, key.lastIndexOf("|"));
+      return { total: wordsForRangeKey(rangeKey).length, reliable: true };
+    }
+    return { total: c.remaining.length + c.reserved.length + c.wrongLap.length, reliable: false };
+  }
+
+  function cycleStatusInfo(key) {
+    var freshPool = poolNosForKey(key);
+    var c = progress.cycles && progress.cycles[key];
+    var remaining = (c && Array.isArray(c.remaining)) ? c.remaining.length : 0;
+    var reserved = (c && Array.isArray(c.reserved)) ? c.reserved.length : 0;
+    var wrong = (c && Array.isArray(c.wrongLap)) ? c.wrongLap.length : 0;
+    var everStarted = !!(c && c.everStarted);
+    var lap = (c && typeof c.lap === "number") ? c.lap : 1;
+    var z = remaining + reserved;
+    var info = {
+      poolSize: freshPool.length,
+      everStarted: everStarted,
+      lap: lap,
+      remaining: remaining,
+      reserved: reserved,
+      wrong: wrong,
+      z: z,
+      completed: everStarted && z === 0 && wrong === 0
+    };
+    if (c) {
+      var t = lapTotalForCycle(c, key);
+      info.lapTotal = t.total;
+      info.lapTotalReliable = t.reliable;
+      info.tested = Math.max(0, t.total - z);
+    } else {
+      info.lapTotal = 0;
+      info.lapTotalReliable = false;
+      info.tested = 0;
+    }
+    return info;
+  }
+
+  function cycleGroupHtml(info, heading) {
+    var lines = ['<div class="range-sub-heading">' + escapeHtml(heading) + '</div>'];
+    if (info.poolSize === 0) {
+      lines.push('<div class="range-sub-row">対象の単語がありません</div>');
+    } else if (!info.everStarted) {
+      lines.push('<div class="range-sub-row">周回: <b>未開始</b>（' + info.poolSize + '語が対象）</div>');
+    } else if (info.completed) {
+      lines.push('<div class="range-sub-row">周回: <b>' + info.lap + '周目・完了</b></div>');
+    } else {
+      lines.push('<div class="range-sub-row">今の周回: <b>' + info.lap + '周目</b></div>');
+      if (info.lapTotalReliable) {
+        lines.push('<div class="range-sub-row">テスト済み: <b>' + info.tested + ' / ' + info.lapTotal + '語</b>（残り' + info.z + '語）</div>');
+      } else {
+        lines.push('<div class="range-sub-row">テスト済み: <b>' + info.tested + '語</b>（残り' + info.z + '語）</div>');
+      }
+      lines.push('<div class="range-sub-row">この周の×: <b>' + info.wrong + '語</b></div>');
+    }
+    return lines.join("");
   }
 
   function reconcileCycleAfterTest(key, confirmedNos, wrongNos, unansweredNos) {
@@ -1247,7 +1415,6 @@ nav.tabbar.is-hidden { display: none; }
       unlearnedOnly: true,
       count: 20,
       activeCycleKey: null, activeCycleLap: null,
-      questions: [], index: 0, answers: [],
       inputQuestions: [], inputResults: [], currentInputSession: null
     },
     progress: { expandedSessions: {} }
@@ -1295,7 +1462,7 @@ nav.tabbar.is-hidden { display: none; }
     RANGES.forEach(function (r) {
       var chip = document.createElement("button");
       chip.className = "chip" + (state.list.range === r ? " active" : "");
-      chip.innerHTML = '<b>' + r + '</b><span class="rest">残り' + rangeRemaining(r) + '語</span>';
+      chip.innerHTML = '<b>' + r + '</b><span class="rest">未チェック' + rangeRemaining(r) + '語</span>';
       chip.addEventListener("click", function () {
         state.list.range = r;
         renderList();
@@ -1364,6 +1531,8 @@ nav.tabbar.is-hidden { display: none; }
 
       main.appendChild(chkWrap);
       main.appendChild(textWrap);
+      var listSpeakBtn = buildSpeakBtn(w.word);
+      if (listSpeakBtn) main.appendChild(listSpeakBtn);
       li.appendChild(main);
 
       var detail = document.createElement("div");
@@ -1397,7 +1566,7 @@ nav.tabbar.is-hidden { display: none; }
     RANGES.forEach(function (r) {
       var chip = document.createElement("button");
       chip.className = "chip" + (state.flip.range === r ? " active" : "");
-      chip.innerHTML = '<b>' + r + '</b><span class="rest">残り' + rangeRemaining(r) + '語</span>';
+      chip.innerHTML = '<b>' + r + '</b><span class="rest">未チェック' + rangeRemaining(r) + '語</span>';
       chip.addEventListener("click", function () {
         state.flip.range = r;
         state.list.range = r;
@@ -1438,6 +1607,8 @@ nav.tabbar.is-hidden { display: none; }
       state.flip.tipEdit = null;
       document.getElementById("flipFrontNo").textContent = "";
       document.getElementById("flipFrontWord").textContent = "カードがありません";
+      document.getElementById("flipFrontSpeakWrap").innerHTML = "";
+      document.getElementById("flipBackSpeakWrap").innerHTML = "";
       front.hidden = false;
       back.hidden = true;
       chk.checked = false;
@@ -1450,6 +1621,14 @@ nav.tabbar.is-hidden { display: none; }
     chk.disabled = false;
     document.getElementById("flipFrontNo").textContent = "No." + w.no + " ・ " + (w.pos || "");
     document.getElementById("flipFrontWord").textContent = w.word;
+    var frontSpeakWrap = document.getElementById("flipFrontSpeakWrap");
+    frontSpeakWrap.innerHTML = "";
+    var frontSpeakBtn = buildSpeakBtn(w.word);
+    if (frontSpeakBtn) frontSpeakWrap.appendChild(frontSpeakBtn);
+    var backSpeakWrap = document.getElementById("flipBackSpeakWrap");
+    backSpeakWrap.innerHTML = "";
+    var backSpeakBtn = buildSpeakBtn(w.word);
+    if (backSpeakBtn) backSpeakWrap.appendChild(backSpeakBtn);
     document.getElementById("flipBackPos").textContent = "品詞: " + (w.pos || "");
     document.getElementById("flipBackMeaning").textContent = w.meaning || "";
     var tipWrap = document.getElementById("flipBackTipWrap");
@@ -1531,8 +1710,6 @@ nav.tabbar.is-hidden { display: none; }
   function updateTestPhaseVisibility() {
     var phase = state.test.phase;
     document.getElementById("testSetup").style.display = phase === "setup" ? "" : "none";
-    document.getElementById("testQuestion").style.display = phase === "choiceQuestion" ? "" : "none";
-    document.getElementById("testResult").style.display = phase === "choiceResult" ? "" : "none";
     document.getElementById("inputTest").style.display = phase === "inputTest" ? "" : "none";
     document.getElementById("inputResult").style.display = phase === "inputResult" ? "" : "none";
   }
@@ -1564,33 +1741,38 @@ nav.tabbar.is-hidden { display: none; }
   function renderCycleStatus() {
     var key = currentCycleKey();
     var mode = cycleModeFromKey(key);
+    var rangeKey = key.slice(0, key.lastIndexOf("|"));
     var freshPool = poolNosForKey(key);
     var c = getCycle(key);
     advanceLapIfPossible(c, mode, freshPool);
     saveProgress();
-    var el = document.getElementById("testCycleStatus");
-    var remainingCount = c.remaining.length;
-    if (remainingCount === 0 && c.wrongLap.length === 0 && c.reserved.length === 0) {
-      if (freshPool.length === 0) {
-        el.textContent = "対象の単語がありません。";
-      } else if (!c.everStarted) {
-        el.textContent = "今は1周目、残り" + freshPool.length + "語";
-      } else {
-        el.textContent = "周回完了（この周で×はありません）。新しい1周目を始められます。";
-      }
+
+    var uncheckedCount = wordsForRangeKey(rangeKey).filter(function (w) { return !isLearned(w.no); }).length;
+    var info = cycleStatusInfo(key);
+    var rows = [];
+    rows.push('<div class="cycle-row">未チェック: <span class="cv">' + uncheckedCount + '語</span>（範囲内の未習得）</div>');
+    if (info.poolSize === 0) {
+      rows.push('<div class="cycle-row">対象の単語がありません。</div>');
+    } else if (!info.everStarted) {
+      rows.push('<div class="cycle-row">周回: <span class="cv">未開始</span>（開始すると1周目、' + info.poolSize + '語が対象）</div>');
+    } else if (info.completed) {
+      rows.push('<div class="cycle-row">周回: <span class="cv">' + info.lap + '周目・完了</span>（この周で×はありません。新しい周を始められます）</div>');
     } else {
-      el.textContent = "今は" + c.lap + "周目、残り" + remainingCount + "語";
+      rows.push('<div class="cycle-row">今の周回: <span class="cv">' + info.lap + '周目</span></div>');
+      if (info.lapTotalReliable) {
+        rows.push('<div class="cycle-row">この周のテスト済み: <span class="cv">' + info.tested + ' / ' + info.lapTotal + '語</span>（残り' + info.z + '語）</div>');
+      } else {
+        rows.push('<div class="cycle-row">この周のテスト済み: <span class="cv">' + info.tested + '語</span>（残り' + info.z + '語）</div>');
+      }
+      rows.push('<div class="cycle-row">この周の×: <span class="cv">' + info.wrong + '語</span></div>');
     }
+    document.getElementById("testCycleStatus").innerHTML = rows.join("");
   }
 
   function renderTestSetup() {
     updateTestPhaseVisibility();
     document.getElementById("testSetupMsg").style.display = "none";
-
-    var fseg = document.getElementById("testFormatSeg");
-    Array.prototype.forEach.call(fseg.querySelectorAll(".seg-btn"), function (btn) {
-      btn.classList.toggle("active", btn.getAttribute("data-format") === state.test.format);
-    });
+    state.test.format = "input";
 
     var rwrap = document.getElementById("testRangeChips");
     rwrap.innerHTML = "";
@@ -1603,7 +1785,7 @@ nav.tabbar.is-hidden { display: none; }
       if (r === "ALL") {
         chip.innerHTML = "<b>全範囲</b><span class=\"rest\">" + ALL_WORDS.length + "語</span>";
       } else {
-        chip.innerHTML = '<b>' + r + '</b><span class="rest">残り' + rangeRemaining(r) + '語</span>';
+        chip.innerHTML = '<b>' + r + '</b><span class="rest">未チェック' + rangeRemaining(r) + '語</span>';
       }
       chip.addEventListener("click", function () { toggleTestRange(r); });
       rwrap.appendChild(chip);
@@ -1632,13 +1814,6 @@ nav.tabbar.is-hidden { display: none; }
     renderCycleStatus();
   }
 
-  document.getElementById("testFormatSeg").addEventListener("click", function (e) {
-    var btn = e.target.closest(".seg-btn");
-    if (!btn) return;
-    state.test.format = btn.getAttribute("data-format");
-    renderTestSetup();
-  });
-
   document.getElementById("testTargetSeg").addEventListener("click", function (e) {
     var btn = e.target.closest(".seg-btn");
     if (!btn) return;
@@ -1653,46 +1828,6 @@ nav.tabbar.is-hidden { display: none; }
     saveProgress();
     renderTestSetup();
   });
-
-  function buildQuestions(pool) {
-    var qs = shuffle(pool).map(function (w) {
-      var meaningsSeen = {};
-      meaningsSeen[w.meaning] = true;
-      var candidatesPrimary = shuffle(pool.filter(function (o) { return o.no !== w.no && !meaningsSeen[o.meaning]; }));
-      var distractors = [];
-      candidatesPrimary.forEach(function (o) {
-        if (distractors.length >= 3) return;
-        if (meaningsSeen[o.meaning]) return;
-        meaningsSeen[o.meaning] = true;
-        distractors.push(o.meaning);
-      });
-      if (distractors.length < 3) {
-        var candidatesAll = shuffle(ALL_WORDS.filter(function (o) { return o.no !== w.no && !meaningsSeen[o.meaning]; }));
-        candidatesAll.forEach(function (o) {
-          if (distractors.length >= 3) return;
-          if (meaningsSeen[o.meaning]) return;
-          meaningsSeen[o.meaning] = true;
-          distractors.push(o.meaning);
-        });
-      }
-      var options = shuffle([w.meaning].concat(distractors));
-      return { no: w.no, word: w.word, pos: w.pos, correctMeaning: w.meaning, options: options };
-    });
-    return qs;
-  }
-
-  function startChoiceTest(pool) {
-    if (!pool.length) {
-      showSetupMessage("出題できる単語がありません");
-      return;
-    }
-    state.test.questions = buildQuestions(pool);
-    state.test.index = 0;
-    state.test.answers = [];
-    state.test.phase = "choiceQuestion";
-    updateTestPhaseVisibility();
-    renderTestQuestion();
-  }
 
   function handleStartClick() {
     var key = currentCycleKey();
@@ -1720,157 +1855,13 @@ nav.tabbar.is-hidden { display: none; }
     state.test.activeCycleKey = key;
     state.test.activeCycleLap = c.lap;
     var chosen = takeResult.taken.map(function (no) { return wordByNo[no]; }).filter(Boolean);
-    if (state.test.format === "choice") {
-      startChoiceTest(chosen);
-    } else {
-      startInputTest(chosen);
-    }
+    startInputTest(chosen);
   }
 
   document.getElementById("testStartBtn").addEventListener("click", handleStartClick);
 
-  function renderTestQuestion() {
-    var q = state.test.questions[state.test.index];
-    document.getElementById("testProgress").textContent =
-      "問 " + (state.test.index + 1) + " / " + state.test.questions.length;
-    document.getElementById("testQuestionWord").textContent = q.word + (q.pos ? "（" + q.pos + "）" : "");
-    var list = document.getElementById("testAnswerList");
-    list.innerHTML = "";
-    document.getElementById("testNextBtn").style.display = "none";
-    q.options.forEach(function (opt, idx) {
-      var btn = document.createElement("button");
-      btn.className = "answer-btn";
-      btn.textContent = opt;
-      btn.addEventListener("click", function () { answerTest(idx); });
-      list.appendChild(btn);
-    });
-  }
-
-  function answerTest(idx) {
-    var q = state.test.questions[state.test.index];
-    if (q.answered) return;
-    q.answered = true;
-    var chosen = q.options[idx];
-    var correct = chosen === q.correctMeaning;
-    appendHistory(q.no, correct ? "○" : "×");
-    state.test.answers.push({ no: q.no, word: q.word, meaning: q.correctMeaning, correct: correct, chosen: chosen });
-
-    var buttons = document.getElementById("testAnswerList").children;
-    Array.prototype.forEach.call(buttons, function (btn, i) {
-      btn.disabled = true;
-      if (q.options[i] === q.correctMeaning) btn.classList.add("correct");
-      else if (i === idx) btn.classList.add("wrong");
-    });
-
-    var nextBtn = document.getElementById("testNextBtn");
-    nextBtn.style.display = "";
-    nextBtn.textContent = (state.test.index + 1 < state.test.questions.length) ? "次へ" : "結果を見る";
-  }
-
-  document.getElementById("testNextBtn").addEventListener("click", function () {
-    if (state.test.index + 1 < state.test.questions.length) {
-      state.test.index++;
-      renderTestQuestion();
-    } else {
-      showTestResult();
-    }
-  });
-
-  function showTestResult() {
-    state.test.phase = "choiceResult";
-    updateTestPhaseVisibility();
-    var answers = state.test.answers;
-    var correctCount = answers.filter(function (a) { return a.correct; }).length;
-    var total = answers.length;
-    var acc = total ? Math.round((correctCount / total) * 100) : 0;
-    document.getElementById("resultAccuracy").textContent = acc + "%";
-    document.getElementById("resultCorrect").textContent = correctCount + " / " + total;
-
-    answers.forEach(function (a) { if (a.correct) setLearned(a.no, true); });
-
-    var items = answers.map(function (a) {
-      var w = wordByNo[a.no];
-      return { no: a.no, word: a.word, meaning: a.meaning, pos: w ? w.pos : "", mark: a.correct ? "○" : "×", answer: a.chosen, verdict: a.correct ? "correct" : "wrong" };
-    });
-
-    var key = state.test.activeCycleKey;
-    addSession({
-      id: makeSessionId(),
-      source: "app",
-      type: "choice",
-      at: new Date().toISOString(),
-      ranges: sessionRangesFromNos(answers.map(function (a) { return a.no; })),
-      total: total,
-      correct: correctCount,
-      cycleKey: key || null,
-      lap: state.test.activeCycleLap || null,
-      items: items
-    });
-
-    reconcileCycleAfterTest(
-      key,
-      answers.map(function (a) { return a.no; }),
-      answers.filter(function (a) { return !a.correct; }).map(function (a) { return a.no; }),
-      []
-    );
-
-    renderResultList(items);
-  }
-
-  function renderResultList(items) {
-    var wrap = document.getElementById("resultList");
-    wrap.innerHTML = "";
-    items.forEach(function (it) {
-      wrap.appendChild(buildResultItemCard({
-        no: it.no, word: it.word, meaning: it.meaning, verdict: it.verdict, answer: it.answer, showManualButtons: false
-      }));
-    });
-  }
-
-  document.getElementById("continueChoiceBtn").addEventListener("click", handleStartClick);
-  document.getElementById("backToSetupBtn").addEventListener("click", function () {
-    state.test.phase = "setup";
-    renderTestSetup();
-  });
-
-  document.getElementById("abortChoiceBtn").addEventListener("click", function () {
-    if (!window.confirm("テストを中断しますか？")) return;
-    var answers = state.test.answers;
-    var allNos = state.test.questions.map(function (q) { return q.no; });
-    var answeredNos = answers.map(function (a) { return a.no; });
-    var unansweredNos = allNos.filter(function (no) { return answeredNos.indexOf(no) === -1; });
-    if (answers.length) {
-      var correctCount = answers.filter(function (a) { return a.correct; }).length;
-      answers.forEach(function (a) { if (a.correct) setLearned(a.no, true); });
-      var items = answers.map(function (a) {
-        var w = wordByNo[a.no];
-        return { no: a.no, word: a.word, meaning: a.meaning, pos: w ? w.pos : "", mark: a.correct ? "○" : "×", answer: a.chosen, verdict: a.correct ? "correct" : "wrong" };
-      });
-      addSession({
-        id: makeSessionId(),
-        source: "app",
-        type: "choice",
-        at: new Date().toISOString(),
-        ranges: sessionRangesFromNos(answeredNos),
-        total: answers.length,
-        correct: correctCount,
-        cycleKey: state.test.activeCycleKey || null,
-        lap: state.test.activeCycleLap || null,
-        items: items
-      });
-    }
-    reconcileCycleAfterTest(
-      state.test.activeCycleKey,
-      answeredNos,
-      answers.filter(function (a) { return !a.correct; }).map(function (a) { return a.no; }),
-      unansweredNos
-    );
-    state.test.activeCycleKey = null;
-    state.test.phase = "setup";
-    renderTestSetup();
-  });
-
   // ---------- Input test ----------
+
   var DRAFT_KEY = "tango_input_draft_v1";
   var VERDICT_LABELS = { correct: "正解", close: "近い（正解扱い）", wrong: "不正解" };
   var VERDICT_CLASSES = { correct: "v-correct", close: "v-close", wrong: "v-wrong" };
@@ -1882,27 +1873,42 @@ nav.tabbar.is-hidden { display: none; }
     state.test.currentInputSession = null;
     state.test.phase = "inputTest";
     updateTestPhaseVisibility();
-    renderInputTest(false);
+    renderInputTest(false, true);
     saveInputDraft();
   }
 
-  function renderInputTest(resumed) {
+  function renderInputTest(resumed, autoFocus) {
     document.getElementById("inputResumeNote").style.display = resumed ? "" : "none";
     var wrap = document.getElementById("inputTestList");
     wrap.innerHTML = "";
+    var inputEls = [];
     state.test.inputQuestions.forEach(function (q, idx) {
       var div = document.createElement("div");
       div.className = "input-q card";
       div.setAttribute("data-no", q.no);
-      div.innerHTML =
-        '<div class="input-q-head"><span class="input-q-no">' + (idx + 1) + '. No.' + q.no + '</span>' +
-        '<span class="w-pos">' + escapeHtml(q.pos || "") + '</span></div>' +
-        '<div class="input-q-word">' + escapeHtml(q.word) + '</div>';
+
+      var head = document.createElement("div");
+      head.className = "input-q-head";
+      head.innerHTML = '<span class="input-q-no">' + (idx + 1) + '. No.' + q.no + '</span>' +
+        '<span class="w-pos">' + escapeHtml(q.pos || "") + '</span>';
+      div.appendChild(head);
+
+      var wordRow = document.createElement("div");
+      wordRow.className = "input-q-word-row";
+      var wordSpan = document.createElement("span");
+      wordSpan.className = "input-q-word";
+      wordSpan.textContent = q.word;
+      wordRow.appendChild(wordSpan);
+      var speakBtn = buildSpeakBtn(q.word);
+      if (speakBtn) wordRow.appendChild(speakBtn);
+      div.appendChild(wordRow);
+
       var input = document.createElement("input");
       input.type = "text";
       input.className = "input-answer";
       input.setAttribute("data-no", q.no);
       input.setAttribute("aria-label", "回答: " + q.word);
+      input.setAttribute("enterkeyhint", (idx === state.test.inputQuestions.length - 1) ? "done" : "next");
       input.autocomplete = "off";
       input.lang = "ja";
       input.value = q.answer || "";
@@ -1910,9 +1916,35 @@ nav.tabbar.is-hidden { display: none; }
         q.answer = e.target.value;
         saveInputDraft();
       });
+      input.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.keyCode !== 13) return;
+        if (e.isComposing || e.keyCode === 229) return;
+        e.preventDefault();
+        var nextInput = inputEls[idx + 1];
+        if (nextInput) {
+          nextInput.focus();
+        } else {
+          var gradeBtn = document.getElementById("inputGradeBtn");
+          if (gradeBtn) gradeBtn.click();
+        }
+      });
+      input.addEventListener("focus", function () {
+        setTimeout(function () {
+          if (input.scrollIntoView) input.scrollIntoView({ block: "center", inline: "nearest" });
+        }, 50);
+      });
+      inputEls.push(input);
       div.appendChild(input);
       wrap.appendChild(div);
     });
+
+    if (autoFocus && inputEls.length) {
+      var focusTarget = inputEls[0];
+      for (var i = 0; i < inputEls.length; i++) {
+        if (!(state.test.inputQuestions[i].answer || "").trim()) { focusTarget = inputEls[i]; break; }
+      }
+      setTimeout(function () { focusTarget.focus(); }, 0);
+    }
   }
 
   function saveInputDraft() {
@@ -1970,7 +2002,7 @@ nav.tabbar.is-hidden { display: none; }
     });
     state.test.phase = "inputTest";
     updateTestPhaseVisibility();
-    renderInputTest(true);
+    renderInputTest(true, true);
     return true;
   }
 
@@ -1995,17 +2027,7 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function refreshResultCards() {
-    if (state.test.phase === "inputResult") {
-      renderInputResult();
-    } else if (state.test.phase === "choiceResult") {
-      renderResultList(state.test.answers.map(function (a) {
-        return {
-          no: a.no, word: a.word, meaning: a.meaning,
-          verdict: a.correct ? "correct" : "wrong",
-          answer: a.chosen, showManualButtons: false
-        };
-      }));
-    }
+    if (state.test.phase === "inputResult") renderInputResult();
   }
 
   function buildResultItemCard(item) {
@@ -2015,8 +2037,16 @@ nav.tabbar.is-hidden { display: none; }
     var verdictClass = VERDICT_CLASSES[item.verdict] || "v-wrong";
     var verdictLabel = VERDICT_LABELS[item.verdict] || "不正解";
     var answerText = (item.answer && String(item.answer).trim() !== "") ? item.answer : "（未回答）";
-    div.innerHTML =
-      '<div class="ir-head"><span class="ir-no">No.' + item.no + '</span><span class="ir-word">' + escapeHtml(item.word) + '</span></div>' +
+
+    var head = document.createElement("div");
+    head.className = "ir-head";
+    head.innerHTML = '<span class="ir-no">No.' + item.no + '</span><span class="ir-word">' + escapeHtml(item.word) + '</span>';
+    var resultSpeakBtn = buildSpeakBtn(item.word);
+    if (resultSpeakBtn) head.appendChild(resultSpeakBtn);
+    div.appendChild(head);
+
+    var rest = document.createElement("div");
+    rest.innerHTML =
       '<div class="ir-line"><span class="ir-lbl">回答</span><span class="ir-val">' + escapeHtml(answerText) + '</span></div>' +
       '<div class="ir-line"><span class="ir-lbl">正しい意味</span><span class="ir-val">' + escapeHtml(item.meaning) + '</span></div>' +
       '<div class="verdict ' + verdictClass + '">' + verdictLabel + '</div>' +
@@ -2026,6 +2056,8 @@ nav.tabbar.is-hidden { display: none; }
           '<button type="button" class="btn btn-mark-wrong" data-no="' + item.no + '">不正解にする</button>' +
           '</div>'
         : "");
+    while (rest.firstChild) div.appendChild(rest.firstChild);
+
     if (item.showManualButtons) {
       div.querySelector(".btn-mark-correct").addEventListener("click", function () { manualSetVerdict(item.no, "correct"); });
       div.querySelector(".btn-mark-wrong").addEventListener("click", function () { manualSetVerdict(item.no, "wrong"); });
@@ -2295,13 +2327,32 @@ nav.tabbar.is-hidden { display: none; }
     RANGES.forEach(function (r) {
       var words = wordsInRange(r);
       var learned = words.filter(function (w) { return isLearned(w.no); }).length;
+      var unchecked = words.length - learned;
       var pct = words.length ? (learned / words.length * 100) : 0;
+
+      var block = document.createElement("div");
+      block.className = "range-progress-block";
+
       var row = document.createElement("div");
       row.className = "bar-row";
+      row.style.marginBottom = "0";
       row.innerHTML =
-        '<div class="bar-label"><span class="nm">' + r + '</span><span class="vv">' + learned + ' / ' + words.length + '</span></div>' +
+        '<div class="bar-label"><span class="nm">' + r + '</span><span class="vv">チェック済み ' + learned + ' / ' + words.length + '</span></div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
-      learnedWrap.appendChild(row);
+      block.appendChild(row);
+
+      var sub = document.createElement("div");
+      sub.className = "range-sub-rows";
+      var html = '<div class="range-sub-row">未チェック: <b>' + unchecked + ' / ' + words.length + '語</b></div>';
+      html += cycleGroupHtml(cycleStatusInfo(r + "|unchecked"), "未チェックの周回");
+      var allInfo = cycleStatusInfo(r + "|all");
+      if (allInfo.everStarted && !allInfo.completed) {
+        html += cycleGroupHtml(allInfo, "全部の周回");
+      }
+      sub.innerHTML = html;
+      block.appendChild(sub);
+
+      learnedWrap.appendChild(block);
     });
 
     var accWrap = document.getElementById("progRangeAccuracy");
@@ -2332,6 +2383,7 @@ nav.tabbar.is-hidden { display: none; }
       accWrap.appendChild(row);
     });
 
+    renderCalendar();
     renderSessionList();
   }
 
@@ -2392,6 +2444,196 @@ nav.tabbar.is-hidden { display: none; }
     }).join("");
     return '<div class="session-items">' + rows + '</div>';
   }
+
+  // ---------- Learning calendar (Asia/Tokyo) ----------
+  var TOKYO_DATE_FMT = (function () {
+    try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }); }
+    catch (e) { return null; }
+  })();
+
+  function tokyoDateKeyFromDate(d) {
+    if (!TOKYO_DATE_FMT || isNaN(d.getTime())) return null;
+    return TOKYO_DATE_FMT.format(d);
+  }
+
+  function tokyoTodayKey() {
+    return tokyoDateKeyFromDate(new Date());
+  }
+
+  function sessionDateKeyFor(s) {
+    if (s && typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.date)) return s.date;
+    if (s && s.at) {
+      var d = new Date(s.at);
+      if (!isNaN(d.getTime())) return tokyoDateKeyFromDate(d);
+    }
+    return null;
+  }
+
+  function buildSessionDayMap() {
+    var map = {}, unknownCount = 0;
+    (progress.sessions || []).forEach(function (s) {
+      var key = sessionDateKeyFor(s);
+      if (!key) { unknownCount++; return; }
+      if (!map[key]) map[key] = { sessions: [], totalItems: 0 };
+      map[key].sessions.push(s);
+      var t = (typeof s.total === "number") ? s.total : (Array.isArray(s.items) ? s.items.length : 0);
+      map[key].totalItems += t;
+    });
+    return { map: map, unknownCount: unknownCount };
+  }
+
+  function calDotsCount(totalItems) {
+    if (totalItems <= 0) return 0;
+    if (totalItems < 10) return 1;
+    if (totalItems < 20) return 2;
+    return 3;
+  }
+
+  function addDaysToKey(key, delta) {
+    var parts = key.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() + delta);
+    var pad = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  function computeStreak(dayMap, todayKey) {
+    var startKey = dayMap.map[todayKey] ? todayKey : addDaysToKey(todayKey, -1);
+    if (!dayMap.map[startKey]) return 0;
+    var streak = 0;
+    var cur = startKey;
+    var guard = 0;
+    while (dayMap.map[cur] && guard < 100000) {
+      streak++;
+      guard++;
+      cur = addDaysToKey(cur, -1);
+    }
+    return streak;
+  }
+
+  function renderCalendarDayDetail(dayMap) {
+    var wrap = document.getElementById("calDayDetail");
+    var calState = state.progress.calendar;
+    if (!calState.selectedDate || !dayMap.map[calState.selectedDate]) {
+      wrap.innerHTML = "";
+      return;
+    }
+    var info = dayMap.map[calState.selectedDate];
+    var sessions = info.sessions.slice().sort(function (a, b) { return sessionTimestamp(b) - sessionTimestamp(a); });
+    var html = '<h3 style="margin:0 0 8px;font-size:14px;">' + escapeHtml(calState.selectedDate) + 'の記録</h3><ul class="session-list">';
+    sessions.forEach(function (s, idx) {
+      var sid = "cal-" + calState.selectedDate + "-" + idx;
+      var scoreText = (s.correct === null || s.correct === undefined) ? "正解数の記録なし" : (s.correct + " / " + s.total);
+      var expanded = !!state.progress.expandedSessions[sid];
+      html += '<li class="session-item"><div class="session-main-wrap" data-sid="' + sid + '">' +
+        '<div class="session-main"><span class="session-label">' + escapeHtml(sessionLabel(s)) + '</span>' +
+        '<span class="session-score">' + escapeHtml(scoreText) + '</span></div></div>';
+      if (expanded) {
+        html += '<div class="session-detail">' + buildSessionDetailHtml(s) + '</div>';
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll(".session-main-wrap"), function (el) {
+      el.addEventListener("click", function () {
+        var sid = el.getAttribute("data-sid");
+        state.progress.expandedSessions[sid] = !state.progress.expandedSessions[sid];
+        renderCalendarDayDetail(dayMap);
+      });
+    });
+  }
+
+  function renderCalendar() {
+    if (!state.progress.calendar) {
+      var tKey = tokyoTodayKey() || "1970-01-01";
+      var tParts = tKey.split("-");
+      state.progress.calendar = { year: parseInt(tParts[0], 10), month: parseInt(tParts[1], 10), selectedDate: null };
+    }
+    var calState = state.progress.calendar;
+    var dayMap = buildSessionDayMap();
+    var todayKey = tokyoTodayKey();
+
+    document.getElementById("calTitle").textContent = calState.year + "年" + calState.month + "月";
+
+    var weekNames = ["日", "月", "火", "水", "木", "金", "土"];
+    document.getElementById("calWeekdays").innerHTML = weekNames.map(function (n) {
+      return '<div class="cal-weekday">' + n + '</div>';
+    }).join("");
+
+    var grid = document.getElementById("calGrid");
+    grid.innerHTML = "";
+    var firstWd = new Date(calState.year, calState.month - 1, 1).getDay();
+    var numDays = new Date(calState.year, calState.month, 0).getDate();
+    var monthLearnedDays = 0;
+
+    for (var i = 0; i < firstWd; i++) {
+      var pad = document.createElement("div");
+      pad.className = "cal-cell is-pad";
+      grid.appendChild(pad);
+    }
+    for (var day = 1; day <= numDays; day++) {
+      var mm = String(calState.month).padStart(2, "0");
+      var dd = String(day).padStart(2, "0");
+      var key = calState.year + "-" + mm + "-" + dd;
+      var info = dayMap.map[key];
+      var hasData = !!info;
+      if (hasData) monthLearnedDays++;
+      var isToday = key === todayKey;
+      var isSelected = calState.selectedDate === key;
+      var cell = document.createElement(hasData ? "button" : "div");
+      if (hasData) cell.type = "button";
+      cell.className = "cal-cell" + (hasData ? " has-data" : "") + (isToday ? " is-today" : "") + (isSelected ? " is-selected" : "");
+      var dotsCount = hasData ? calDotsCount(info.totalItems) : 0;
+      var dotsHtml = "";
+      if (dotsCount > 0) {
+        var dots = "";
+        for (var di = 0; di < dotsCount; di++) dots += '<span class="cal-dot"></span>';
+        dotsHtml = '<div class="cal-dots">' + dots + '</div>';
+      }
+      cell.innerHTML = '<span class="cal-daynum">' + day + '</span>' + dotsHtml;
+      if (hasData) {
+        cell.setAttribute("aria-label", key + "の記録を見る");
+        cell.addEventListener("click", (function (k) {
+          return function () {
+            calState.selectedDate = (calState.selectedDate === k) ? null : k;
+            renderCalendar();
+          };
+        })(key));
+      }
+      grid.appendChild(cell);
+    }
+
+    var streak = computeStreak(dayMap, todayKey);
+    document.getElementById("calSummary").innerHTML =
+      '<span>表示中の月の学習日数: <b>' + monthLearnedDays + '日</b></span>' +
+      '<span>連続学習日数: <b>' + streak + '日</b></span>';
+
+    var unknownEl = document.getElementById("calUnknownMsg");
+    if (dayMap.unknownCount > 0) {
+      unknownEl.style.display = "";
+      unknownEl.textContent = "日付不明の記録が" + dayMap.unknownCount + "件あります";
+    } else {
+      unknownEl.style.display = "none";
+    }
+
+    renderCalendarDayDetail(dayMap);
+  }
+
+  document.getElementById("calPrevBtn").addEventListener("click", function () {
+    var cs = state.progress.calendar;
+    cs.month -= 1;
+    if (cs.month < 1) { cs.month = 12; cs.year -= 1; }
+    cs.selectedDate = null;
+    renderCalendar();
+  });
+  document.getElementById("calNextBtn").addEventListener("click", function () {
+    var cs = state.progress.calendar;
+    cs.month += 1;
+    if (cs.month > 12) { cs.month = 1; cs.year += 1; }
+    cs.selectedDate = null;
+    renderCalendar();
+  });
 
   function renderSessionList() {
     var wrap = document.getElementById("progSessionList");
@@ -2543,6 +2785,7 @@ nav.tabbar.is-hidden { display: none; }
 
   // ---------- Init ----------
   loadProgress();
+  reconcileReservedOnLoad();
   applyTheme();
   document.getElementById("appbarSub").textContent = ALL_WORDS.length + "語";
   switchTab("list");
