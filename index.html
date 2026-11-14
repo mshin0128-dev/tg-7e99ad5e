@@ -103,8 +103,49 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
   box-shadow: var(--shadow);
   min-width: 0;
 }
-.appbar h1 { margin: 0; font-size: 20px; font-weight: 700; }
-.appbar p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+.appbar-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.appbar-text { flex: 1; min-width: 0; }
+.appbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appbar p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; overflow-wrap: anywhere; }
+.appbar .icon-btn {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(255,255,255,0.22);
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.appbar .icon-btn svg { width: 20px; height: 20px; }
+.appbar .icon-btn[aria-pressed="true"] { background: rgba(255,255,255,0.38); }
+.view-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+  min-width: 0;
+}
+.view-title-row .view-title { margin: 0; flex: 1; min-width: 0; }
+.view-title-row .btn { flex: none; min-height: 36px; padding: 0 14px; font-size: 14px; }
 .view { display: none; padding: 16px; min-width: 0; }
 .view.active { display: block; }
 h2.view-title { margin: 0 0 12px; font-size: 18px; font-weight: 700; }
@@ -478,8 +519,18 @@ nav.tabbar.is-hidden { display: none; }
 <body>
 <div id="app">
   <header class="appbar">
-    <h1>TOEIC単語帳</h1>
-    <p id="appbarSub">No.1〜1000</p>
+    <div class="appbar-row">
+      <div class="appbar-text">
+        <h1>TOEIC単語帳</h1>
+        <p id="appbarSub">No.1〜1000</p>
+      </div>
+      <button type="button" class="icon-btn" id="settingsBtn" aria-label="設定" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
   </header>
 
   <section class="view active" id="view-list">
@@ -615,7 +666,10 @@ nav.tabbar.is-hidden { display: none; }
   </section>
 
   <section class="view" id="view-settings">
-    <h2 class="view-title">設定</h2>
+    <div class="view-title-row">
+      <h2 class="view-title">設定</h2>
+      <button type="button" class="btn" id="settingsBackBtn">戻る</button>
+    </div>
     <div class="card" style="margin-bottom:16px;">
       <div class="settings-row" style="flex-direction:column;align-items:stretch;">
         <div class="st-label" style="margin-bottom:10px;">外観</div>
@@ -665,7 +719,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.14a</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.14b</p>
   </section>
 </div>
 
@@ -704,13 +758,6 @@ nav.tabbar.is-hidden { display: none; }
       <line x1="20" y1="20" x2="20" y2="4.5"></line>
     </svg>
     <span>進み具合</span>
-  </button>
-  <button class="tab-btn" data-tab="settings" aria-label="設定">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3"></circle>
-      <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"></path>
-    </svg>
-    <span>設定</span>
   </button>
 </nav>
 
@@ -1420,14 +1467,24 @@ nav.tabbar.is-hidden { display: none; }
     progress: { expandedSessions: {} }
   };
 
+  var lastMainTab = "list";
+
+  function updateSettingsBtnState(name) {
+    var btn = document.getElementById("settingsBtn");
+    if (btn) btn.setAttribute("aria-pressed", name === "settings" ? "true" : "false");
+  }
+
   function switchTab(name) {
+    if (name !== "settings") lastMainTab = name;
     state.tab = name;
     Array.prototype.forEach.call(document.querySelectorAll(".view"), function (v) {
       v.classList.toggle("active", v.id === "view-" + name);
     });
     Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function (b) {
-      b.classList.toggle("active", b.getAttribute("data-tab") === name);
+      var t = b.getAttribute("data-tab");
+      b.classList.toggle("active", name === "settings" ? t === lastMainTab : t === name);
     });
+    updateSettingsBtnState(name);
     if (name === "list") renderList();
     if (name === "flip") {
       var rangeChanged = state.flip.range !== state.list.range;
@@ -1454,6 +1511,62 @@ nav.tabbar.is-hidden { display: none; }
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function (btn) {
     btn.addEventListener("click", function () { switchTab(btn.getAttribute("data-tab")); });
   });
+
+  function abortInputTest() {
+    var answered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() !== ""; });
+    var unanswered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() === ""; });
+    var wrongNos = [];
+    if (answered.length) {
+      var correctCount = 0;
+      var items = answered.map(function (q) {
+        var g = window.tangoGrade(q.answer, q.meaning);
+        appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
+        if (g.verdict !== "wrong") { correctCount++; setLearned(q.no, true); } else { wrongNos.push(q.no); }
+        var w = wordByNo[q.no];
+        return { no: q.no, word: q.word, meaning: q.meaning, pos: q.pos || (w ? w.pos : ""), mark: g.verdict === "wrong" ? "×" : "○", answer: q.answer, verdict: g.verdict };
+      });
+      addSession({
+        id: makeSessionId(),
+        source: "app",
+        type: "input",
+        at: new Date().toISOString(),
+        ranges: sessionRangesFromNos(answered.map(function (q) { return q.no; })),
+        total: answered.length,
+        correct: correctCount,
+        cycleKey: state.test.activeCycleKey || null,
+        lap: state.test.activeCycleLap || null,
+        items: items
+      });
+    }
+    reconcileCycleAfterTest(
+      state.test.activeCycleKey,
+      answered.map(function (q) { return q.no; }),
+      wrongNos,
+      unanswered.map(function (q) { return q.no; })
+    );
+    state.test.activeCycleKey = null;
+    clearInputDraft();
+    state.test.phase = "setup";
+    renderTestSetup();
+  }
+
+  function openSettings() {
+    if (state.tab === "test" && state.test.phase === "inputTest") {
+      if (!window.confirm("テストの途中です。設定を開くとテストを中断します。中断しますか？")) return;
+      abortInputTest();
+    }
+    switchTab("settings");
+  }
+
+  function closeSettings() {
+    switchTab(lastMainTab || "list");
+  }
+
+  document.getElementById("settingsBtn").addEventListener("click", function () {
+    if (state.tab === "settings") closeSettings();
+    else openSettings();
+  });
+  document.getElementById("settingsBackBtn").addEventListener("click", closeSettings);
 
   // ---------- List view ----------
   function renderListChips() {
@@ -2165,41 +2278,7 @@ nav.tabbar.is-hidden { display: none; }
 
   document.getElementById("abortInputBtn").addEventListener("click", function () {
     if (!window.confirm("テストを中断しますか？")) return;
-    var answered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() !== ""; });
-    var unanswered = state.test.inputQuestions.filter(function (q) { return (q.answer || "").trim() === ""; });
-    var wrongNos = [];
-    if (answered.length) {
-      var correctCount = 0;
-      var items = answered.map(function (q) {
-        var g = window.tangoGrade(q.answer, q.meaning);
-        appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
-        if (g.verdict !== "wrong") { correctCount++; setLearned(q.no, true); } else { wrongNos.push(q.no); }
-        var w = wordByNo[q.no];
-        return { no: q.no, word: q.word, meaning: q.meaning, pos: q.pos || (w ? w.pos : ""), mark: g.verdict === "wrong" ? "×" : "○", answer: q.answer, verdict: g.verdict };
-      });
-      addSession({
-        id: makeSessionId(),
-        source: "app",
-        type: "input",
-        at: new Date().toISOString(),
-        ranges: sessionRangesFromNos(answered.map(function (q) { return q.no; })),
-        total: answered.length,
-        correct: correctCount,
-        cycleKey: state.test.activeCycleKey || null,
-        lap: state.test.activeCycleLap || null,
-        items: items
-      });
-    }
-    reconcileCycleAfterTest(
-      state.test.activeCycleKey,
-      answered.map(function (q) { return q.no; }),
-      wrongNos,
-      unanswered.map(function (q) { return q.no; })
-    );
-    state.test.activeCycleKey = null;
-    clearInputDraft();
-    state.test.phase = "setup";
-    renderTestSetup();
+    abortInputTest();
   });
 
   // ---------- Gemini (optional AI recheck) ----------
