@@ -719,7 +719,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.16b</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.16c</p>
   </section>
 </div>
 
@@ -1334,12 +1334,12 @@ nav.tabbar.is-hidden { display: none; }
     return info;
   }
 
-  function cycleGroupHtml(info, heading) {
+  function cycleGroupHtml(info, heading, isAllMode) {
     var lines = ['<div class="range-sub-heading">' + escapeHtml(heading) + '</div>'];
     if (info.poolSize === 0) {
       lines.push('<div class="range-sub-row">対象の単語がありません</div>');
     } else if (!info.everStarted) {
-      lines.push('<div class="range-sub-row">周回: <b>未開始</b>（' + info.poolSize + '語が対象）</div>');
+      lines.push('<div class="range-sub-row">今の周回: <b>0周目</b>（' + info.poolSize + '語が対象）</div>');
     } else {
       lines.push('<div class="range-sub-row">今の周回: <b>' + info.lap + '周目</b></div>');
       if (info.lapTotalReliable) {
@@ -1898,7 +1898,7 @@ nav.tabbar.is-hidden { display: none; }
     if (info.poolSize === 0) {
       rows.push('<div class="cycle-row">対象の単語がありません。</div>');
     } else if (!info.everStarted) {
-      rows.push('<div class="cycle-row">周回: <span class="cv">未開始</span>（開始すると1周目、' + info.poolSize + '語が対象）</div>');
+      rows.push('<div class="cycle-row">今の周回: <span class="cv">0周目</span>（開始すると1周目、' + info.poolSize + '語が対象）</div>');
     } else {
       rows.push('<div class="cycle-row">今の周回: <span class="cv">' + info.lap + '周目</span></div>');
       if (info.lapTotalReliable) {
@@ -2454,9 +2454,7 @@ nav.tabbar.is-hidden { display: none; }
       var html = '<div class="range-sub-row">未チェック: <b>' + unchecked + ' / ' + words.length + '語</b></div>';
       html += cycleGroupHtml(cycleStatusInfo(r + "|unchecked"), "未チェックの周回");
       var allInfo = cycleStatusInfo(r + "|all");
-      if (allInfo.everStarted) {
-        html += cycleGroupHtml(allInfo, "全部の周回");
-      }
+      html += cycleGroupHtml(allInfo, "全部の周回", true);
       sub.innerHTML = html;
       block.appendChild(sub);
 
