@@ -709,8 +709,20 @@ nav.tabbar.is-hidden { display: none; }
     </div>
     <div class="card" style="margin-bottom:16px;">
       <div class="settings-row" style="flex-direction:column;align-items:stretch;">
-        <div class="st-label" style="margin-bottom:6px;">Gemini APIキー（任意）</div>
-        <div class="st-desc" style="margin-bottom:10px;">入力テストで不正解になった問題だけ、AIに意味の妥当性を確認させます。キーがなくてもすべての機能は動作します。</div>
+        <div class="st-label" style="margin-bottom:6px;">OpenAI APIキー</div>
+        <div class="st-desc" style="margin-bottom:10px;">入力テストで不正解になった問題だけ、AIに意味の妥当性を確認させます。キーは platform.openai.com で作成できます。支払い登録と、月の利用上限の設定をしておくと安心です。キーがなくてもすべての機能は動作します。</div>
+        <input type="password" id="openaiKeyInput" autocomplete="off" placeholder="APIキーを入力" style="width:100%;min-height:44px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:0 14px;margin-bottom:10px;">
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn primary" id="openaiKeySaveBtn">保存</button>
+          <button class="btn" id="openaiKeyDeleteBtn" style="display:none;color:var(--danger);">削除</button>
+        </div>
+        <p class="st-desc" id="openaiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;">
+        <div class="st-label" style="margin-bottom:6px;">Gemini APIキー（予備）</div>
+        <div class="st-desc" style="margin-bottom:10px;">OpenAIのキーがないときだけ使います。キーがなくてもすべての機能は動作します。</div>
         <input type="password" id="geminiKeyInput" autocomplete="off" placeholder="APIキーを入力" style="width:100%;min-height:44px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:0 14px;margin-bottom:10px;">
         <div class="btn-row" style="margin-top:0;">
           <button class="btn primary" id="geminiKeySaveBtn">保存</button>
@@ -719,7 +731,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.16c</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.16d</p>
   </section>
 </div>
 
@@ -1543,7 +1555,7 @@ nav.tabbar.is-hidden { display: none; }
       }
     }
     if (name === "progress") renderProgress();
-    if (name === "settings") refreshGeminiKeyUI();
+    if (name === "settings") { refreshOpenaiKeyUI(); refreshGeminiKeyUI(); }
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function (btn) {
@@ -2154,8 +2166,10 @@ nav.tabbar.is-hidden { display: none; }
     return { total: total, good: good, acc: total ? Math.round((good / total) * 100) : 0 };
   }
 
-  function showAiNote(show) {
-    document.getElementById("inputAiNote").style.display = show ? "" : "none";
+  function showAiNote(show, message) {
+    var el = document.getElementById("inputAiNote");
+    el.style.display = show ? "" : "none";
+    if (show) el.textContent = message || "AI判定は使えませんでした";
   }
 
   function rewriteLastHistoryMark(no, mark) {
@@ -2301,7 +2315,7 @@ nav.tabbar.is-hidden { display: none; }
     reconcileCycleAfterTest(key, confirmedNos, wrongNos, []);
     updateTestPhaseVisibility();
     renderInputResult();
-    maybeRunGeminiCheck(results);
+    maybeRunAiCheck(results);
   }
 
   document.getElementById("inputGradeBtn").addEventListener("click", gradeInputTest);
@@ -2317,21 +2331,56 @@ nav.tabbar.is-hidden { display: none; }
     abortInputTest();
   });
 
-  // ---------- Gemini (optional AI recheck) ----------
+  // ---------- AI recheck (OpenAI primary, Gemini fallback) ----------
+  var OPENAI_KEY = "wayaku_openai_key";
   var GEMINI_KEY = "tango_gemini_key";
+
+  function openaiKey() {
+    try { return localStorage.getItem(OPENAI_KEY) || ""; } catch (e) { return ""; }
+  }
 
   function geminiKey() {
     try { return localStorage.getItem(GEMINI_KEY) || ""; } catch (e) { return ""; }
   }
 
-  function buildGeminiPrompt(items) {
+  function buildAiPrompt(items) {
     var lines = items.map(function (it, idx) {
       return (idx + 1) + ". word: " + it.word + " / official meaning: " + it.meaning + " / user answer: " + it.answer;
     });
     return "以下は英単語テストの採点結果です。各項目について、ユーザーの回答(user answer)が、その単語の公式な意味(official meaning)として妥当かどうかを判定してください。" +
       "厳密な完全一致でなくても、意味的に正しい、または許容できる言い換え・類義語であれば妥当とみなしてください。" +
-      "次のJSON配列の形式で、項目数と順序を保ったまま回答してください（説明文は不要です）: " +
-      "[{\"index\": 1, \"acceptable\": true}, ...]\n\n" + lines.join("\n");
+      "次のJSON形式で、項目数と順序を保ったまま回答してください（説明文は不要です）: " +
+      "{\"results\":[{\"index\": 1, \"acceptable\": true}, ...]}\n\n" + lines.join("\n");
+  }
+
+  function callOpenAI(apiKey, promptText) {
+    var url = "https://api.openai.com/v1/chat/completions";
+    var body = {
+      model: "gpt-6-luna",
+      messages: [
+        { role: "system", content: "あなたは英単語テストの採点補助です。指定されたJSONだけを返してください。" },
+        { role: "user", content: promptText }
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 400,
+      reasoning_effort: "none"
+    };
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) {
+        var err = new Error("openai http " + res.status);
+        err.status = res.status;
+        err.provider = "openai";
+        throw err;
+      }
+      return res.json();
+    }).then(function (data) {
+      var text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      return JSON.parse(text);
+    });
   }
 
   function callGemini(model, apiKey, promptText) {
@@ -2348,6 +2397,7 @@ nav.tabbar.is-hidden { display: none; }
       if (!res.ok) {
         var err = new Error("gemini http " + res.status);
         err.status = res.status;
+        err.provider = "gemini";
         throw err;
       }
       return res.json();
@@ -2358,48 +2408,101 @@ nav.tabbar.is-hidden { display: none; }
     });
   }
 
-  function maybeRunGeminiCheck(results) {
-    var apiKey = geminiKey();
-    if (!apiKey) return;
+  function parseAiResults(parsed) {
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && Array.isArray(parsed.results)) return parsed.results;
+    return null;
+  }
+
+  function aiFailMessage(e) {
+    var provider = e && e.provider;
+    var status = e && e.status;
+    if (provider === "openai" && status === 401) return "APIキーが正しくありません";
+    if (provider === "openai" && status === 429) return "APIの利用上限か残高不足です";
+    if (provider === "gemini" && status === 429) return "今日の無料枠を使い切りました（17時ごろ回復）";
+    return "AI判定は使えませんでした";
+  }
+
+  function applyAiResults(parsed, items) {
+    var list = parseAiResults(parsed);
+    if (!list) { showAiNote(true); return; }
+    list.forEach(function (entry) {
+      if (!entry || typeof entry.index !== "number" || !entry.acceptable) return;
+      var item = items[entry.index - 1];
+      if (!item) return;
+      var r = null;
+      for (var i = 0; i < state.test.inputResults.length; i++) {
+        if (state.test.inputResults[i].no === item.no) { r = state.test.inputResults[i]; break; }
+      }
+      if (r && r.verdict === "wrong") {
+        r.verdict = "correct";
+        r.aiChecked = true;
+        rewriteLastHistoryMark(r.no, "○");
+        setLearned(r.no, true);
+        var session = state.test.currentInputSession;
+        if (session) {
+          var it = (session.items || []).filter(function (x) { return x.no === r.no; })[0];
+          if (it) { it.verdict = "correct"; it.mark = "○"; }
+          adjustCycleForVerdictChange(session.cycleKey, session.lap, r.no, true, false);
+        }
+      }
+    });
+    syncCurrentInputSessionScore();
+    if (state.test.phase === "inputResult") renderInputResult();
+  }
+
+  function maybeRunAiCheck(results) {
     var wrongs = results.filter(function (r) { return r.verdict === "wrong"; });
     if (!wrongs.length) return;
     var items = wrongs.map(function (r) { return { no: r.no, word: r.word, answer: r.answer, meaning: r.meaning }; });
-    var promptText = buildGeminiPrompt(items);
+    var promptText = buildAiPrompt(items);
 
-    callGemini("gemini-3.5-flash", apiKey, promptText).catch(function (e) {
-      if (e && (e.status === 503 || e.status === 429)) {
-        return callGemini("gemini-flash-latest", apiKey, promptText);
-      }
-      throw e;
-    }).then(function (parsed) {
-      if (!Array.isArray(parsed)) { showAiNote(true); return; }
-      parsed.forEach(function (entry) {
-        if (!entry || typeof entry.index !== "number" || !entry.acceptable) return;
-        var item = items[entry.index - 1];
-        if (!item) return;
-        var r = null;
-        for (var i = 0; i < state.test.inputResults.length; i++) {
-          if (state.test.inputResults[i].no === item.no) { r = state.test.inputResults[i]; break; }
+    var oaKey = openaiKey();
+    var gmKey = geminiKey();
+
+    var chain;
+    if (oaKey) {
+      chain = callOpenAI(oaKey, promptText);
+    } else if (gmKey) {
+      chain = callGemini("gemini-3.5-flash", gmKey, promptText).catch(function (e) {
+        if (e && e.status === 503) {
+          return callGemini("gemini-flash-latest", gmKey, promptText);
         }
-        if (r && r.verdict === "wrong") {
-          r.verdict = "correct";
-          r.aiChecked = true;
-          rewriteLastHistoryMark(r.no, "○");
-          setLearned(r.no, true);
-          var session = state.test.currentInputSession;
-          if (session) {
-            var it = (session.items || []).filter(function (x) { return x.no === r.no; })[0];
-            if (it) { it.verdict = "correct"; it.mark = "○"; }
-            adjustCycleForVerdictChange(session.cycleKey, session.lap, r.no, true, false);
-          }
-        }
+        throw e;
       });
-      syncCurrentInputSessionScore();
-      if (state.test.phase === "inputResult") renderInputResult();
-    }).catch(function () {
-      showAiNote(true);
+    } else {
+      return;
+    }
+
+    chain.then(function (parsed) {
+      applyAiResults(parsed, items);
+    }).catch(function (e) {
+      showAiNote(true, aiFailMessage(e));
     });
   }
+
+  function refreshOpenaiKeyUI() {
+    var input = document.getElementById("openaiKeyInput");
+    var hasKey = !!openaiKey();
+    input.placeholder = hasKey ? "保存済み" : "APIキーを入力";
+    input.value = "";
+    document.getElementById("openaiKeyDeleteBtn").style.display = hasKey ? "" : "none";
+    document.getElementById("openaiKeyStatus").textContent = hasKey ? "保存済みのキーがあります" : "未設定です（なくても動作します）";
+  }
+
+  document.getElementById("openaiKeySaveBtn").addEventListener("click", function () {
+    var input = document.getElementById("openaiKeyInput");
+    var v = input.value.trim();
+    if (!v) return;
+    try { localStorage.setItem(OPENAI_KEY, v); } catch (e) {}
+    input.value = "";
+    refreshOpenaiKeyUI();
+  });
+
+  document.getElementById("openaiKeyDeleteBtn").addEventListener("click", function () {
+    try { localStorage.removeItem(OPENAI_KEY); } catch (e) {}
+    refreshOpenaiKeyUI();
+  });
 
   function refreshGeminiKeyUI() {
     var input = document.getElementById("geminiKeyInput");
