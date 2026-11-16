@@ -184,6 +184,8 @@ h2.view-title { margin: 0 0 12px; font-size: 18px; font-weight: 700; }
 .chip span.rest { font-size: 11px; color: var(--sub); }
 .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip.active span.rest { color: rgba(255,255,255,0.85); }
+.chip span.rest.scene { font-size: 10px; text-align: center; overflow-wrap: anywhere; max-width: 12em; }
+
 .search-wrap { margin-bottom: 12px; }
 .search-wrap input {
   width: 100%;
@@ -522,7 +524,7 @@ nav.tabbar.is-hidden { display: none; }
     <div class="appbar-row">
       <div class="appbar-text">
         <h1>TOEIC単語帳</h1>
-        <p id="appbarSub">No.1〜1000</p>
+        <p id="appbarSub">No.1〜1500</p>
       </div>
       <button type="button" class="icon-btn" id="settingsBtn" aria-label="設定" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -640,7 +642,7 @@ nav.tabbar.is-hidden { display: none; }
     <h2 class="view-title">進み具合</h2>
     <div class="card" style="margin-bottom:16px;">
       <div class="bar-row" style="margin-bottom:0;">
-        <div class="bar-label"><span class="nm">全体の習得</span><span class="vv" id="progOverallText">0 / 1000</span></div>
+        <div class="bar-label"><span class="nm">全体の習得</span><span class="vv" id="progOverallText">0 / 1500</span></div>
         <div class="bar-track"><div class="bar-fill" id="progOverallBar" style="width:0%"></div></div>
       </div>
     </div>
@@ -731,7 +733,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.16d</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1500<br>v2026.11.16e</p>
   </section>
 </div>
 
@@ -781,7 +783,24 @@ nav.tabbar.is-hidden { display: none; }
 
   var PROGRESS_KEY = "tango_progress_v1";
   var THEME_KEY = "tango_theme_pref";
-  var RANGES = ["001-100", "101-200", "201-300", "301-400", "401-500", "501-600", "601-700", "701-800", "801-900", "901-1000"];
+  var RANGES = ["001-100", "101-200", "201-300", "301-400", "401-500", "501-600", "601-700", "701-800", "801-900", "901-1000", "1001-1100", "1101-1200", "1201-1300", "1301-1400", "1401-1500"];
+  var RANGE_SCENES = {
+    "1001-1100": "オフィス・人事",
+    "1101-1200": "営業・マーケティング",
+    "1201-1300": "経理・契約・法務",
+    "1301-1400": "製造・物流・購買",
+    "1401-1500": "出張・イベント・顧客対応"
+  };
+  function rangeScene(r) {
+    return RANGE_SCENES[r] || "";
+  }
+  function rangeChipInner(r, rest) {
+    var scene = rangeScene(r);
+    var html = "<b>" + r + "</b>";
+    if (scene) html += '<span class="rest scene">' + scene + "</span>";
+    html += '<span class="rest">' + rest + "</span>";
+    return html;
+  }
   var ALL_WORDS = (window.TANGO_DATA && window.TANGO_DATA.words) || [];
   var wordByNo = {};
   ALL_WORDS.forEach(function (w) { wordByNo[w.no] = w; });
@@ -1625,7 +1644,7 @@ nav.tabbar.is-hidden { display: none; }
     RANGES.forEach(function (r) {
       var chip = document.createElement("button");
       chip.className = "chip" + (state.list.range === r ? " active" : "");
-      chip.innerHTML = '<b>' + r + '</b><span class="rest">未チェック' + rangeRemaining(r) + '語</span>';
+      chip.innerHTML = rangeChipInner(r, '未チェック' + rangeRemaining(r) + '語');
       chip.addEventListener("click", function () {
         state.list.range = r;
         renderList();
@@ -1729,7 +1748,7 @@ nav.tabbar.is-hidden { display: none; }
     RANGES.forEach(function (r) {
       var chip = document.createElement("button");
       chip.className = "chip" + (state.flip.range === r ? " active" : "");
-      chip.innerHTML = '<b>' + r + '</b><span class="rest">未チェック' + rangeRemaining(r) + '語</span>';
+      chip.innerHTML = rangeChipInner(r, '未チェック' + rangeRemaining(r) + '語');
       chip.addEventListener("click", function () {
         state.flip.range = r;
         state.list.range = r;
@@ -1939,7 +1958,7 @@ nav.tabbar.is-hidden { display: none; }
       if (r === "ALL") {
         chip.innerHTML = "<b>全範囲</b><span class=\"rest\">" + ALL_WORDS.length + "語</span>";
       } else {
-        chip.innerHTML = '<b>' + r + '</b><span class="rest">未チェック' + rangeRemaining(r) + '語</span>';
+        chip.innerHTML = rangeChipInner(r, '未チェック' + rangeRemaining(r) + '語');
       }
       chip.addEventListener("click", function () { toggleTestRange(r); });
       rwrap.appendChild(chip);
@@ -2548,7 +2567,7 @@ nav.tabbar.is-hidden { display: none; }
       row.className = "bar-row";
       row.style.marginBottom = "0";
       row.innerHTML =
-        '<div class="bar-label"><span class="nm">' + r + '</span><span class="vv">チェック済み ' + learned + ' / ' + words.length + '</span></div>' +
+        '<div class="bar-label"><span class="nm">' + r + (rangeScene(r) ? ' ' + rangeScene(r) : '') + '</span><span class="vv">チェック済み ' + learned + ' / ' + words.length + '</span></div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
       block.appendChild(row);
 
@@ -2581,12 +2600,12 @@ nav.tabbar.is-hidden { display: none; }
       row.className = "bar-row";
       if (totalMarks === 0) {
         row.innerHTML =
-          '<div class="bar-label"><span class="nm">' + r + '</span><span class="vv bar-none">まだなし</span></div>' +
+          '<div class="bar-label"><span class="nm">' + r + (rangeScene(r) ? ' ' + rangeScene(r) : '') + '</span><span class="vv bar-none">まだなし</span></div>' +
           '<div class="bar-track"><div class="bar-fill acc" style="width:0%"></div></div>';
       } else {
         var acc = Math.round((correctMarks / totalMarks) * 100);
         row.innerHTML =
-          '<div class="bar-label"><span class="nm">' + r + '</span><span class="vv">' + acc + '%（' + correctMarks + '/' + totalMarks + '）</span></div>' +
+          '<div class="bar-label"><span class="nm">' + r + (rangeScene(r) ? ' ' + rangeScene(r) : '') + '</span><span class="vv">' + acc + '%（' + correctMarks + '/' + totalMarks + '）</span></div>' +
           '<div class="bar-track"><div class="bar-fill acc" style="width:' + acc + '%"></div></div>';
       }
       accWrap.appendChild(row);
