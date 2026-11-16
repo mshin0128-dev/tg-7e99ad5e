@@ -719,7 +719,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.14b</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1000<br>v2026.11.16a</p>
   </section>
 </div>
 
@@ -849,7 +849,9 @@ nav.tabbar.is-hidden { display: none; }
   }
 
   function buildInitialProgress() {
-    return mergeWithExcel({}, {}, [], {}, {});
+    var p = mergeWithExcel({}, {}, [], {}, {});
+    p.migrations = {};
+    return p;
   }
 
   function saveProgress() {
@@ -871,7 +873,9 @@ nav.tabbar.is-hidden { display: none; }
       var savedSessions = (parsed && Array.isArray(parsed.sessions)) ? parsed.sessions : [];
       var savedCycles = (parsed && typeof parsed.cycles === "object" && parsed.cycles) ? parsed.cycles : {};
       var savedTips = (parsed && typeof parsed.tips === "object" && parsed.tips) ? parsed.tips : {};
+      var savedMigrations = (parsed && typeof parsed.migrations === "object" && parsed.migrations) ? parsed.migrations : {};
       progress = mergeWithExcel(savedLearned, savedHistory, savedSessions, savedCycles, savedTips);
+      progress.migrations = savedMigrations;
       saveProgress();
     } catch (e) {
       progress = buildInitialProgress();
@@ -903,6 +907,43 @@ nav.tabbar.is-hidden { display: none; }
       });
       c.reserved = stillReserved;
     });
+    if (changed) saveProgress();
+  }
+
+  function migrateLapFullPool() {
+    if (!progress.cycles || typeof progress.cycles !== "object") return;
+    Object.keys(progress.cycles).forEach(function (key) {
+      var c = progress.cycles[key];
+      if (!c || typeof c !== "object" || !(typeof c.lap === "number" && c.lap >= 2)) return;
+      var freshPool = poolNosForKey(key);
+      var excludeSet = {};
+      (Array.isArray(c.reserved) ? c.reserved : []).forEach(function (no) { excludeSet[no] = true; });
+      (Array.isArray(c.wrongLap) ? c.wrongLap : []).forEach(function (no) { excludeSet[no] = true; });
+      c.remaining = shuffle(freshPool.filter(function (no) { return !excludeSet[no]; }));
+      c.lapTotal = freshPool.length;
+    });
+  }
+
+  function migrateUncheckLastWrong() {
+    ALL_WORDS.forEach(function (w) {
+      var h = getHistory(w.no);
+      if (h && h.charAt(h.length - 1) === "×") progress.learned[w.no] = false;
+    });
+  }
+
+  function runMigrations() {
+    if (!progress.migrations || typeof progress.migrations !== "object") progress.migrations = {};
+    var changed = false;
+    if (!progress.migrations.uncheckLastWrong_v1) {
+      migrateUncheckLastWrong();
+      progress.migrations.uncheckLastWrong_v1 = true;
+      changed = true;
+    }
+    if (!progress.migrations.lapFullPool_v1) {
+      migrateLapFullPool();
+      progress.migrations.lapFullPool_v1 = true;
+      changed = true;
+    }
     if (changed) saveProgress();
   }
 
@@ -1232,13 +1273,13 @@ nav.tabbar.is-hidden { display: none; }
   function advanceLapIfPossible(c, mode, freshPoolNos) {
     pruneForUnchecked(c, mode, freshPoolNos);
     var guard = 0;
-    while (c.remaining.length === 0 && c.reserved.length === 0 && c.wrongLap.length > 0 && guard < 20) {
+    while (c.everStarted && c.remaining.length === 0 && c.reserved.length === 0 && freshPoolNos.length > 0 && guard < 20) {
       guard++;
       c.lap = (c.lap || 1) + 1;
-      c.remaining = shuffle(c.wrongLap.slice());
       c.wrongLap = [];
-      pruneForUnchecked(c, mode, freshPoolNos);
+      c.remaining = shuffle(freshPoolNos.slice());
       c.lapTotal = c.remaining.length;
+      pruneForUnchecked(c, mode, freshPoolNos);
     }
   }
 
@@ -1278,8 +1319,7 @@ nav.tabbar.is-hidden { display: none; }
       remaining: remaining,
       reserved: reserved,
       wrong: wrong,
-      z: z,
-      completed: everStarted && z === 0 && wrong === 0
+      z: z
     };
     if (c) {
       var t = lapTotalForCycle(c, key);
@@ -1300,8 +1340,6 @@ nav.tabbar.is-hidden { display: none; }
       lines.push('<div class="range-sub-row">対象の単語がありません</div>');
     } else if (!info.everStarted) {
       lines.push('<div class="range-sub-row">周回: <b>未開始</b>（' + info.poolSize + '語が対象）</div>');
-    } else if (info.completed) {
-      lines.push('<div class="range-sub-row">周回: <b>' + info.lap + '周目・完了</b></div>');
     } else {
       lines.push('<div class="range-sub-row">今の周回: <b>' + info.lap + '周目</b></div>');
       if (info.lapTotalReliable) {
@@ -1521,7 +1559,7 @@ nav.tabbar.is-hidden { display: none; }
       var items = answered.map(function (q) {
         var g = window.tangoGrade(q.answer, q.meaning);
         appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
-        if (g.verdict !== "wrong") { correctCount++; setLearned(q.no, true); } else { wrongNos.push(q.no); }
+        if (g.verdict !== "wrong") { correctCount++; setLearned(q.no, true); } else { wrongNos.push(q.no); setLearned(q.no, false); }
         var w = wordByNo[q.no];
         return { no: q.no, word: q.word, meaning: q.meaning, pos: q.pos || (w ? w.pos : ""), mark: g.verdict === "wrong" ? "×" : "○", answer: q.answer, verdict: g.verdict };
       });
@@ -1861,8 +1899,6 @@ nav.tabbar.is-hidden { display: none; }
       rows.push('<div class="cycle-row">対象の単語がありません。</div>');
     } else if (!info.everStarted) {
       rows.push('<div class="cycle-row">周回: <span class="cv">未開始</span>（開始すると1周目、' + info.poolSize + '語が対象）</div>');
-    } else if (info.completed) {
-      rows.push('<div class="cycle-row">周回: <span class="cv">' + info.lap + '周目・完了</span>（この周で×はありません。新しい周を始められます）</div>');
     } else {
       rows.push('<div class="cycle-row">今の周回: <span class="cv">' + info.lap + '周目</span></div>');
       if (info.lapTotalReliable) {
@@ -2209,7 +2245,7 @@ nav.tabbar.is-hidden { display: none; }
     r.verdict = newVerdict;
     r.manual = true;
     rewriteLastHistoryMark(no, newVerdict === "wrong" ? "×" : "○");
-    if (!isWrong) setLearned(no, true);
+    setLearned(no, !isWrong);
     var session = state.test.currentInputSession;
     if (session) {
       var it = (session.items || []).filter(function (x) { return x.no === no; })[0];
@@ -2236,7 +2272,7 @@ nav.tabbar.is-hidden { display: none; }
       var answered = (q.answer || "").trim() !== "";
       var g = window.tangoGrade(q.answer, q.meaning);
       appendHistory(q.no, g.verdict === "wrong" ? "×" : "○");
-      if (g.verdict !== "wrong") setLearned(q.no, true);
+      setLearned(q.no, g.verdict !== "wrong");
       confirmedNos.push(q.no);
       if (!answered || g.verdict === "wrong") wrongNos.push(q.no);
       return { no: q.no, word: q.word, pos: q.pos, meaning: q.meaning, answer: q.answer, verdict: g.verdict };
@@ -2418,7 +2454,7 @@ nav.tabbar.is-hidden { display: none; }
       var html = '<div class="range-sub-row">未チェック: <b>' + unchecked + ' / ' + words.length + '語</b></div>';
       html += cycleGroupHtml(cycleStatusInfo(r + "|unchecked"), "未チェックの周回");
       var allInfo = cycleStatusInfo(r + "|all");
-      if (allInfo.everStarted && !allInfo.completed) {
+      if (allInfo.everStarted) {
         html += cycleGroupHtml(allInfo, "全部の周回");
       }
       sub.innerHTML = html;
@@ -2857,6 +2893,7 @@ nav.tabbar.is-hidden { display: none; }
 
   // ---------- Init ----------
   loadProgress();
+  runMigrations();
   reconcileReservedOnLoad();
   applyTheme();
   document.getElementById("appbarSub").textContent = ALL_WORDS.length + "語";
