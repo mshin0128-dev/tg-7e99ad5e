@@ -721,19 +721,7 @@ nav.tabbar.is-hidden { display: none; }
         <p class="st-desc" id="openaiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
       </div>
     </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="settings-row" style="flex-direction:column;align-items:stretch;">
-        <div class="st-label" style="margin-bottom:6px;">Gemini APIキー（予備）</div>
-        <div class="st-desc" style="margin-bottom:10px;">OpenAIのキーがないときだけ使います。キーがなくてもすべての機能は動作します。</div>
-        <input type="password" id="geminiKeyInput" autocomplete="off" placeholder="APIキーを入力" style="width:100%;min-height:44px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:0 14px;margin-bottom:10px;">
-        <div class="btn-row" style="margin-top:0;">
-          <button class="btn primary" id="geminiKeySaveBtn">保存</button>
-          <button class="btn" id="geminiKeyDeleteBtn" style="display:none;color:var(--danger);">削除</button>
-        </div>
-        <p class="st-desc" id="geminiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
-      </div>
-    </div>
-    <p class="footer-note">データ出典：TOEIC単語帳 001-1500<br>v2026.11.16e</p>
+    <p class="footer-note">データ出典：TOEIC単語帳 001-1500<br>v2026.11.17a</p>
   </section>
 </div>
 
@@ -1574,7 +1562,7 @@ nav.tabbar.is-hidden { display: none; }
       }
     }
     if (name === "progress") renderProgress();
-    if (name === "settings") { refreshOpenaiKeyUI(); refreshGeminiKeyUI(); }
+    if (name === "settings") { refreshOpenaiKeyUI(); }
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab-btn"), function (btn) {
@@ -2350,16 +2338,11 @@ nav.tabbar.is-hidden { display: none; }
     abortInputTest();
   });
 
-  // ---------- AI recheck (OpenAI primary, Gemini fallback) ----------
+  // ---------- AI recheck (OpenAI) ----------
   var OPENAI_KEY = "wayaku_openai_key";
-  var GEMINI_KEY = "tango_gemini_key";
 
   function openaiKey() {
     try { return localStorage.getItem(OPENAI_KEY) || ""; } catch (e) { return ""; }
-  }
-
-  function geminiKey() {
-    try { return localStorage.getItem(GEMINI_KEY) || ""; } catch (e) { return ""; }
   }
 
   function buildAiPrompt(items) {
@@ -2402,31 +2385,6 @@ nav.tabbar.is-hidden { display: none; }
     });
   }
 
-  function callGemini(model, apiKey, promptText) {
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(apiKey);
-    var body = {
-      contents: [{ parts: [{ text: promptText }] }],
-      generationConfig: { responseMimeType: "application/json" }
-    };
-    return fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    }).then(function (res) {
-      if (!res.ok) {
-        var err = new Error("gemini http " + res.status);
-        err.status = res.status;
-        err.provider = "gemini";
-        throw err;
-      }
-      return res.json();
-    }).then(function (data) {
-      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content &&
-        data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-      return JSON.parse(text);
-    });
-  }
-
   function parseAiResults(parsed) {
     if (Array.isArray(parsed)) return parsed;
     if (parsed && Array.isArray(parsed.results)) return parsed.results;
@@ -2436,9 +2394,8 @@ nav.tabbar.is-hidden { display: none; }
   function aiFailMessage(e) {
     var provider = e && e.provider;
     var status = e && e.status;
-    if (provider === "openai" && status === 401) return "APIキーが正しくありません";
+    if (provider === "openai" && status === 401) return "APIキーが正しくありません（OpenAIで有効か確認して入れ直してください）";
     if (provider === "openai" && status === 429) return "APIの利用上限か残高不足です";
-    if (provider === "gemini" && status === 429) return "今日の無料枠を使い切りました（17時ごろ回復）";
     return "AI判定は使えませんでした";
   }
 
@@ -2477,19 +2434,12 @@ nav.tabbar.is-hidden { display: none; }
     var promptText = buildAiPrompt(items);
 
     var oaKey = openaiKey();
-    var gmKey = geminiKey();
 
     var chain;
     if (oaKey) {
       chain = callOpenAI(oaKey, promptText);
-    } else if (gmKey) {
-      chain = callGemini("gemini-3.5-flash", gmKey, promptText).catch(function (e) {
-        if (e && e.status === 503) {
-          return callGemini("gemini-flash-latest", gmKey, promptText);
-        }
-        throw e;
-      });
     } else {
+      showAiNote(true, "設定でOpenAIのAPIキーを入れてください");
       return;
     }
 
@@ -2521,29 +2471,6 @@ nav.tabbar.is-hidden { display: none; }
   document.getElementById("openaiKeyDeleteBtn").addEventListener("click", function () {
     try { localStorage.removeItem(OPENAI_KEY); } catch (e) {}
     refreshOpenaiKeyUI();
-  });
-
-  function refreshGeminiKeyUI() {
-    var input = document.getElementById("geminiKeyInput");
-    var hasKey = !!geminiKey();
-    input.placeholder = hasKey ? "保存済み" : "APIキーを入力";
-    input.value = "";
-    document.getElementById("geminiKeyDeleteBtn").style.display = hasKey ? "" : "none";
-    document.getElementById("geminiKeyStatus").textContent = hasKey ? "保存済みのキーがあります" : "未設定です（なくても動作します）";
-  }
-
-  document.getElementById("geminiKeySaveBtn").addEventListener("click", function () {
-    var input = document.getElementById("geminiKeyInput");
-    var v = input.value.trim();
-    if (!v) return;
-    try { localStorage.setItem(GEMINI_KEY, v); } catch (e) {}
-    input.value = "";
-    refreshGeminiKeyUI();
-  });
-
-  document.getElementById("geminiKeyDeleteBtn").addEventListener("click", function () {
-    try { localStorage.removeItem(GEMINI_KEY); } catch (e) {}
-    refreshGeminiKeyUI();
   });
 
   // ---------- Progress view ----------
@@ -3012,6 +2939,11 @@ nav.tabbar.is-hidden { display: none; }
   })();
 
   // ---------- Init ----------
+  // 旧Geminiキーを端末から削除
+  try {
+    localStorage.removeItem("tango_gemini_key");
+    localStorage.removeItem("wayaku_gemini_key");
+  } catch (e) {}
   loadProgress();
   runMigrations();
   reconcileReservedOnLoad();
