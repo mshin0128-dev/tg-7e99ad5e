@@ -81,44 +81,6 @@
     toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2200);
   }
 
-  // 画面内ダイアログ確認：危険な操作は「〜しますか？」を画面に出し、実行／キャンセルを選ぶ（筋トレアプリと同じ方式）
-  var confirmState = null;
-  function ensureConfirmEl() {
-    var ov = document.getElementById("confirmOverlay");
-    if (ov) return ov;
-    ov = document.createElement("div");
-    ov.id = "confirmOverlay";
-    ov.className = "confirm-overlay";
-    ov.innerHTML = '<div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">'
-      + '<div class="confirm-title" id="confirmTitle"></div>'
-      + '<p class="confirm-msg" id="confirmMsg"></p>'
-      + '<div class="confirm-actions"><button type="button" class="btn confirm-cancel" id="confirmCancelBtn"></button>'
-      + '<button type="button" class="btn confirm-ok" id="confirmOkBtn"></button></div></div>';
-    document.body.appendChild(ov);
-    ov.addEventListener("click", function (e) { if (e.target === ov) closeConfirm(); });
-    ov.querySelector("#confirmCancelBtn").addEventListener("click", closeConfirm);
-    ov.querySelector("#confirmOkBtn").addEventListener("click", function () {
-      var cb = confirmState && confirmState.onOk;
-      closeConfirm();
-      if (cb) cb();
-    });
-    return ov;
-  }
-  function closeConfirm() {
-    var ov = document.getElementById("confirmOverlay");
-    if (ov) ov.classList.remove("show");
-    confirmState = null;
-  }
-  function askConfirm(opts, onOk) {
-    var ov = ensureConfirmEl();
-    ov.querySelector("#confirmTitle").textContent = opts.title || "";
-    ov.querySelector("#confirmMsg").textContent = opts.message || "";
-    ov.querySelector("#confirmOkBtn").textContent = opts.okText || "OK";
-    ov.querySelector("#confirmCancelBtn").textContent = opts.cancelText || "キャンセル";
-    confirmState = { onOk: onOk };
-    ov.classList.add("show");
-  }
-
   // リップル（押した位置から広がる）: 主ボタン・選択ボタン・タブ
   var RIPPLE_SEL = ".btn.primary, .chip, .seg-btn, .tab-btn";
   document.addEventListener("pointerdown", function (e) {
@@ -1480,11 +1442,10 @@
     renderTestSetup();
   });
   $("cycleResetBtn").addEventListener("click", function () {
-    askConfirm({ title: "周回をリセットしますか？", message: "このテスト形式の周回（何周したか）が最初からになります。", okText: "リセットする", cancelText: "リセットしない" }, function () {
-      delete progress.cycles[currentCycleKey()];
-      saveProgress();
-      renderTestSetup();
-    });
+    if (!window.confirm("この範囲×対象×形式（" + lapFormatOfUi(state.test.format).label + "）の周回をリセットします。よろしいですか？")) return;
+    delete progress.cycles[currentCycleKey()];
+    saveProgress();
+    renderTestSetup();
   });
 
   $("testFormatSeg").addEventListener("click", function (e) {
@@ -2168,19 +2129,9 @@
     showToast("APIキーを保存しました");
   });
   $("openaiKeyDeleteBtn").addEventListener("click", function () {
-    askConfirm({ title: "APIキーを削除しますか？", message: "削除すると、AI判定を使うには再入力が必要です。", okText: "削除する", cancelText: "削除しない" }, function () {
-      try { localStorage.removeItem(OPENAI_KEY); } catch (e) {}
-      refreshOpenaiKeyUI();
-      showToast("APIキーを削除しました");
-    });
-  });
-  $("openaiKeyToggleBtn").addEventListener("click", function () {
-    var input = $("openaiKeyInput");
-    var show = input.type === "password";
-    input.type = show ? "text" : "password";
-    $("openaiKeyToggleBtn").textContent = show ? "🙈" : "👁";
-    $("openaiKeyToggleBtn").setAttribute("aria-label", show ? "APIキーを隠す" : "APIキーを表示する");
-    input.focus();
+    try { localStorage.removeItem(OPENAI_KEY); } catch (e) {}
+    refreshOpenaiKeyUI();
+    showToast("APIキーを削除しました");
   });
 
   // ---------- 進み具合 ----------
@@ -2527,17 +2478,16 @@
   });
 
   $("resetBtn").addEventListener("click", function () {
-    askConfirm({ title: "学習記録をリセットしますか？", message: "覚えた記録・テスト結果・復習スケジュールがすべて消えます。元に戻せません。", okText: "リセットする", cancelText: "リセットしない" }, function () {
-      var keptTips = progress.tips;
-      progress = normalizeProgress({ tips: keptTips, settings: progress.settings, flags: progress.flags });
-      saveProgress();
-      clearInputDraft();
-      state.test.phase = "setup";
-      state.test.activeCycleKey = null;
-      state.progress.expandedSessions = {};
-      renderAll();
-      showToast("学習記録をリセットしました");
-    });
+    if (!window.confirm("学習記録をすべて消して最初の状態に戻します。よろしいですか？")) return;
+    var keptTips = progress.tips;
+    progress = normalizeProgress({ tips: keptTips, settings: progress.settings, flags: progress.flags });
+    saveProgress();
+    clearInputDraft();
+    state.test.phase = "setup";
+    state.test.activeCycleKey = null;
+    state.progress.expandedSessions = {};
+    renderAll();
+    showToast("学習記録をリセットしました");
   });
 
   function renderAll() {
