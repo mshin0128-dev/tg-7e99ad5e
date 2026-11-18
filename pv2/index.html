@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>TOEIC単語帳</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TOEIC単語帳">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('toeic:v1:theme') || localStorage.getItem('tango_theme_pref') || 'auto';
+    var effective = (pref === 'light' || pref === 'dark')
+      ? pref
+      : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', effective);
+    document.documentElement.style.colorScheme = effective;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', effective === 'dark' ? '#1C1826' : '#FFFFFF');
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<p id="notice" class="notice" role="alert" hidden>この端末では記録を保存できません。このページを閉じると記録が消えます。</p>
+<div id="app">
+  <header class="appbar">
+    <div class="appbar-row">
+      <div class="appbar-text">
+        <h1>TOEIC単語帳</h1>
+        <p id="appbarSub">TOEIC · 1500 WORDS</p>
+      </div>
+      <button type="button" class="icon-btn" id="settingsBtn" aria-label="設定" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="view active" id="view-list">
+    <div class="card mb" id="homeCard">
+      <div id="homeStats"></div>
+      <button type="button" class="btn primary block review-btn" id="reviewBtn">今日の復習<span id="reviewCount"></span></button>
+    </div>
+    <h2 class="view-title">単語一覧</h2>
+    <div class="chip-row" id="listRangeChips"></div>
+    <div class="search-wrap">
+      <input type="text" id="listSearch" placeholder="英単語・意味・No.で検索" aria-label="検索" autocomplete="off">
+    </div>
+    <ul class="word-list" id="listWords"></ul>
+  </section>
+
+  <section class="view" id="view-flip">
+    <h2 class="view-title">めくる</h2>
+    <div class="chip-row" id="flipRangeChips"></div>
+    <div class="btn-row flush">
+      <button type="button" class="btn" id="flipShuffleBtn" aria-pressed="false">シャッフル: オフ</button>
+      <button type="button" class="btn" id="flipUnlearnedBtn" aria-pressed="false">未習得だけ: オフ</button>
+      <button type="button" class="btn primary" id="flipStartBtn">最初から</button>
+    </div>
+    <div class="flip-progress" id="flipProgress">0 / 0</div>
+    <div class="flip-card-outer">
+      <div class="flip-card" id="flipCard">
+        <div class="flip-front" id="flipFront">
+          <div class="flip-no" id="flipFrontNo"></div>
+          <div class="flip-word" id="flipFrontWord">カードがありません</div>
+          <div class="flip-speak-wrap" id="flipFrontSpeakWrap"></div>
+          <div class="flip-hint">タップして意味を見る</div>
+        </div>
+        <div class="flip-back" id="flipBack" hidden>
+          <div class="w-pos" id="flipBackPos"></div>
+          <div class="flip-meaning" id="flipBackMeaning"></div>
+          <div class="flip-speak-wrap" id="flipBackSpeakWrap"></div>
+          <div class="detail-line" id="flipBackTipWrap"></div>
+          <div class="detail-line" id="flipBackExampleWrap">
+            <span class="detail-label">例文</span>
+            <p id="flipBackExample"></p>
+            <p class="ja" id="flipBackExampleJa"></p>
+          </div>
+          <div class="detail-line">
+            <span class="detail-label">記録</span>
+            <div id="flipBackHistory"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flip-learned-row">
+      <label class="check-label"><input type="checkbox" id="flipLearnedChk">覚えた</label>
+      <button type="button" class="star-btn flip-star" id="flipStarBtn" aria-pressed="false"></button>
+    </div>
+    <div class="flip-nav">
+      <button type="button" class="btn block" id="flipPrevBtn">前へ</button>
+      <button type="button" class="btn block" id="flipNextBtn">次へ</button>
+    </div>
+  </section>
+
+  <section class="view" id="view-test">
+    <h2 class="view-title">テスト</h2>
+    <div id="testSetup">
+      <div class="card mb" id="reviewCard">
+        <div class="review-info" id="reviewInfo"></div>
+        <button type="button" class="btn block" id="reviewToggleBtn">今日の復習モード</button>
+      </div>
+      <div class="field" id="testFormatField">
+        <label class="field-label">形式</label>
+        <div class="seg" id="testFormatSeg">
+          <button type="button" class="seg-btn" data-format="input">英→日 入力</button>
+          <button type="button" class="seg-btn" data-format="jaen">日→英 入力</button>
+          <button type="button" class="seg-btn" data-format="cloze">例文穴埋め</button>
+        </div>
+      </div>
+      <div class="field" id="testRangeField">
+        <label class="field-label">範囲</label>
+        <div class="chip-row" id="testRangeChips"></div>
+      </div>
+      <div class="field" id="testTargetField">
+        <label class="field-label">対象</label>
+        <div class="seg" id="testTargetSeg">
+          <button type="button" class="seg-btn" data-target="unchecked">未チェックだけ</button>
+          <button type="button" class="seg-btn" data-target="all">全部（チェック済みも含む）</button>
+          <button type="button" class="seg-btn" data-target="flagged" id="testFlaggedBtn">★フラグのみ</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">出題数</label>
+        <div class="chip-row" id="testCountChips"></div>
+      </div>
+      <div class="card mb" id="testCycleCard">
+        <div class="cycle-status" id="testCycleStatus" style="margin:0 0 10px;"></div>
+        <button type="button" class="btn block danger" id="cycleResetBtn">周回をリセット</button>
+      </div>
+      <button type="button" class="btn primary block" id="testStartBtn">テストを始める</button>
+      <p class="empty-msg" id="testSetupMsg" style="display:none;"></p>
+    </div>
+    <div id="inputTest" style="display:none;">
+      <p class="resume-note" id="inputResumeNote" style="display:none;">前回の続きから再開しました</p>
+      <div class="bar-row test-progress" id="testProgress">
+        <div class="bar-label"><span class="nm">回答済み</span><span class="vv" id="testProgText">0 / 0</span></div>
+        <div class="bar-track" id="testProgTrack" role="progressbar" aria-label="回答済みの問題数" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar-fill" id="testProgBar" style="width:0%"></div></div>
+      </div>
+      <div id="inputTestList"></div>
+      <div class="btn-row">
+        <button type="button" class="btn primary block" id="inputGradeBtn">採点</button>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn block danger" id="abortInputBtn">中断</button>
+      </div>
+    </div>
+    <div id="inputResult" style="display:none;">
+      <div class="result-stat-row">
+        <div class="result-stat"><div class="num" id="inputResultAccuracy">0%</div><div class="lbl">正答率</div></div>
+        <div class="result-stat"><div class="num" id="inputResultCorrect">0 / 0</div><div class="lbl">正解数</div></div>
+      </div>
+      <p class="ai-note" id="inputAiNote" style="display:none;">AI判定は使えませんでした</p>
+      <div id="inputResultList"></div>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="continueInputBtn">続けてテストする</button>
+        <button type="button" class="btn" id="backToSetupInputBtn">もう一度設定する</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-progress">
+    <h2 class="view-title">進み具合</h2>
+    <div class="card mb" id="progStats"></div>
+    <div class="card mb">
+      <div class="bar-row" style="margin-bottom:0;">
+        <div class="bar-label"><span class="nm">全体の習得</span><span class="vv" id="progOverallText">0 / 1500</span></div>
+        <div class="bar-track"><div class="bar-fill" id="progOverallBar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <h2 class="view-title sub">セットごとの習得</h2>
+    <div class="card mb" id="progRangeLearned"></div>
+    <h2 class="view-title sub">セットごとの正答率</h2>
+    <div class="card mb" id="progRangeAccuracy"></div>
+    <h2 class="view-title sub">学習記録カレンダー</h2>
+    <div class="card mb" id="progCalendarCard">
+      <div class="cal-header">
+        <button type="button" class="btn" id="calPrevBtn" aria-label="前の月">&lt;</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button type="button" class="btn" id="calNextBtn" aria-label="次の月">&gt;</button>
+      </div>
+      <div class="cal-weekdays" id="calWeekdays"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-summary" id="calSummary"></div>
+      <p class="import-msg err" id="calUnknownMsg" style="display:none;"></p>
+      <div id="calDayDetail"></div>
+    </div>
+    <h2 class="view-title sub">テストの記録</h2>
+    <div class="card" id="progSessionList"></div>
+  </section>
+
+  <section class="view" id="view-settings">
+    <div class="view-title-row">
+      <h2 class="view-title">設定</h2>
+      <button type="button" class="btn" id="settingsBackBtn">戻る</button>
+    </div>
+    <div class="card mb">
+      <div class="settings-row col">
+        <div class="st-label" style="margin-bottom:10px;">外観</div>
+        <div class="seg" id="themeSeg">
+          <button type="button" class="seg-btn" data-theme-choice="auto">自動</button>
+          <button type="button" class="seg-btn" data-theme-choice="light">ライト</button>
+          <button type="button" class="seg-btn" data-theme-choice="dark">ダーク</button>
+        </div>
+      </div>
+    </div>
+    <div class="card mb">
+      <div class="settings-row">
+        <div>
+          <div class="st-label">1日の目標語数</div>
+          <div class="st-desc">今日の学習語数と比べる目標（1〜500語）</div>
+        </div>
+        <input type="number" id="goalInput" class="goal-input" min="1" max="500" step="1" inputmode="numeric" aria-label="1日の目標語数">
+      </div>
+    </div>
+    <div class="card mb">
+      <div class="settings-row">
+        <div>
+          <div class="st-label">進捗を書き出す</div>
+          <div class="st-desc">保存されている進捗すべてをJSONファイルとしてダウンロードします</div>
+        </div>
+        <button type="button" class="btn" id="exportBtn">書き出す</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="st-label">進捗を読み込む</div>
+          <div class="st-desc">書き出したJSONファイルから進捗を復元します（今の進捗は置き換わります）</div>
+        </div>
+        <label class="file-label" for="importFile">読み込む</label>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+      </div>
+      <p class="import-msg" id="importMsg" style="display:none;"></p>
+    </div>
+    <div class="card mb">
+      <div class="settings-row">
+        <div>
+          <div class="st-label">記録リセット</div>
+          <div class="st-desc">学習記録をすべて消して最初の状態に戻します（テーマ設定・覚え方の編集内容・★フラグは残ります）</div>
+        </div>
+        <button type="button" class="btn danger" id="resetBtn">リセット</button>
+      </div>
+    </div>
+    <div class="card mb">
+      <div class="settings-row col">
+        <div class="st-label" style="margin-bottom:6px;">OpenAI APIキー</div>
+        <div class="st-desc" style="margin-bottom:10px;">入力テストで不正解になった問題だけ、AIに意味の妥当性を確認させます。このとき単語とあなたの回答がOpenAIに送信されます。キーは platform.openai.com で作成できます。支払い登録と、月の利用上限の設定をしておくと安心です。キーがなくてもすべての機能は動作します。</div>
+        <input type="password" id="openaiKeyInput" class="key-input" autocomplete="off" placeholder="APIキーを入力">
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn primary" id="openaiKeySaveBtn">保存</button>
+          <button type="button" class="btn danger" id="openaiKeyDeleteBtn" style="display:none;">削除</button>
+        </div>
+        <p class="st-desc" id="openaiKeyStatus" style="margin-top:8px;">未設定です（なくても動作します）</p>
+      </div>
+    </div>
+    <p class="footer-note">データ出典：TOEIC単語帳 全1500語（セット1〜15）<br>v2026.11.17</p>
+  </section>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="メイン">
+  <button type="button" class="tab-btn active" data-tab="list" aria-label="一覧">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="9" y1="6" x2="20" y2="6"></line>
+      <line x1="9" y1="12" x2="20" y2="12"></line>
+      <line x1="9" y1="18" x2="20" y2="18"></line>
+      <circle cx="4.5" cy="6" r="1.4"></circle>
+      <circle cx="4.5" cy="12" r="1.4"></circle>
+      <circle cx="4.5" cy="18" r="1.4"></circle>
+    </svg>
+    <span>一覧</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="flip" aria-label="めくる">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="7" width="13" height="10" rx="2.2"></rect>
+      <path d="M8 7V5.5a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2V13a2 2 0 0 1-2 2h-1.5"></path>
+    </svg>
+    <span>めくる</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="test" aria-label="テスト">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="5" y="3.5" width="14" height="17" rx="2.2"></rect>
+      <path d="M9 3.5h6v2.2H9z"></path>
+      <path d="M8.5 12.5l2.2 2.2L15.5 10"></path>
+    </svg>
+    <span>テスト</span>
+  </button>
+  <button type="button" class="tab-btn" data-tab="progress" aria-label="進み具合">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="5" y1="20" x2="5" y2="13"></line>
+      <line x1="10.3" y1="20" x2="10.3" y2="8"></line>
+      <line x1="15.6" y1="20" x2="15.6" y2="11"></line>
+      <line x1="20" y1="20" x2="20" y2="4.5"></line>
+    </svg>
+    <span>進み具合</span>
+  </button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<noscript><p class="notice">TOEIC単語帳の利用には JavaScript を有効にしてください。</p></noscript>
+<script src="words.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
