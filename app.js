@@ -149,12 +149,16 @@
 
   // ---------- 保存 / 読み込み ----------
   var lastSaveOk = true;
+  var wordsMissing = (ALL_WORDS.length === 0); // words.js が読めなかった時は保存データに一切触らない
+  var restoredFromLegacy = false;
+  var LEGACY_RESTORE_MARK_KEY = "toeic:v1:legacy_restore_mark";
   function showStorageNotice(show) {
     var el = $("notice");
     if (el) el.hidden = !show;
   }
 
   function saveProgress() {
+    if (wordsMissing) return; // 単語ゼロの状態で空の進捗を上書きしない
     try {
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       showStorageNotice(false);
@@ -377,6 +381,7 @@
   }
 
   function loadProgress() {
+    if (wordsMissing) return; // 単語データが無い時は読み込みも保存もしない（記録を保護）
     var raw = null;
     try { raw = localStorage.getItem(PROGRESS_KEY); } catch (e) { raw = null; }
     var parsed = null;
@@ -386,6 +391,24 @@
       if (migrated) { progress = migrated; saveProgress(); return; }
     }
     progress = normalizeProgress(parsed);
+    // 今の記録が空っぽで旧アプリの記録が残っていれば復元する（同じ旧データでは1回だけ）
+    var hasData = Object.keys(progress.learned).some(function (k) { return progress.learned[k]; }) ||
+      Object.keys(progress.history).some(function (k) { return progress.history[k]; }) ||
+      progress.sessions.length > 0 || Object.keys(progress.tips).length > 0;
+    if (!hasData) {
+      var legacyRaw = null;
+      try { legacyRaw = localStorage.getItem(LEGACY_PROGRESS_KEY); } catch (e) { legacyRaw = null; }
+      var mark = null;
+      try { mark = localStorage.getItem(LEGACY_RESTORE_MARK_KEY); } catch (e) { mark = null; }
+      if (legacyRaw && mark !== String(legacyRaw.length)) {
+        var legacy = migrateLegacyProgress();
+        if (legacy) {
+          progress = legacy;
+          restoredFromLegacy = true;
+          try { localStorage.setItem(LEGACY_RESTORE_MARK_KEY, String(legacyRaw.length)); } catch (e) {}
+        }
+      }
+    }
     saveProgress();
   }
 
@@ -2553,6 +2576,13 @@
   renderTestSetup();
   renderProgress();
   $("goalInput").value = dailyGoal();
+  if (wordsMissing) {
+    var wn = $("notice");
+    if (wn) { wn.textContent = "単語データを読み込めませんでした。記録は保護されています。通信の良い場所でアプリを開き直してください。"; wn.hidden = false; }
+  } else if (restoredFromLegacy) {
+    var rn = $("notice");
+    if (rn) { rn.textContent = "以前のアプリに残っていた学習記録を復元しました。"; rn.hidden = false; }
+  }
 
   // ---------- PWA: Service Worker 登録（オフライン用。失敗しても通常動作） ----------
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
