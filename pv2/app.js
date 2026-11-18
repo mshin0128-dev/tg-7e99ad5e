@@ -2567,13 +2567,6 @@
   // ---------- 起動 ----------
   migrateLegacyTheme();
   loadProgress();
-  if (wordsMissing) {
-    var wn = $("notice");
-    if (wn) { wn.textContent = "単語データを読み込めませんでした。記録は保護されています。通信の良い場所でアプリを開き直してください。"; wn.hidden = false; }
-  } else if (restoredFromLegacy) {
-    var rn = $("notice");
-    if (rn) { rn.textContent = "以前のアプリに残っていた学習記録を復元しました。"; rn.hidden = false; }
-  }
   reconcileReservedOnLoad();
   applyTheme();
   $("appbarSub").textContent = "TOEIC · " + ALL_WORDS.length + " WORDS";
@@ -2583,6 +2576,13 @@
   renderTestSetup();
   renderProgress();
   $("goalInput").value = dailyGoal();
+  if (wordsMissing) {
+    var wn = $("notice");
+    if (wn) { wn.textContent = "単語データを読み込めませんでした。記録は保護されています。通信の良い場所でアプリを開き直してください。"; wn.hidden = false; }
+  } else if (restoredFromLegacy) {
+    var rn = $("notice");
+    if (rn) { rn.textContent = "以前のアプリに残っていた学習記録を復元しました。"; rn.hidden = false; }
+  }
 
   // ---------- PWA: Service Worker 登録（オフライン用。失敗しても通常動作） ----------
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
